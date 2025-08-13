@@ -1,10 +1,5 @@
-export const metadata = {
-  title: "Creator-Base",
-  description: "Adult-Agentur – sauber, planbar, fair."
-};
-
+export const metadata = { title: "Creator-Base", description: "Adult-Agentur – sauber, planbar, fair." };
 import "./globals.css";
-
 export default function RootLayout({ children }) {
   return (
     <html lang="de">
