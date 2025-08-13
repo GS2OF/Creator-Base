@@ -371,23 +371,44 @@ export default function Page() {
               <li className="flex items-center gap-2"><CheckCircle2 className="size-4" style={{ color: ACCENT }} /> Unverbindlich & ehrlich</li>
             </ul>
           </div>
-          <form onSubmit={(e) => { e.preventDefault(); alert("Danke! Wir melden uns in Kürze."); }} className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur">
-            <div className="grid gap-4">
-              <div>
-                <label className="text-sm text-white/80">Dein Name</label>
-                <input required placeholder="Vor- und Nachname" className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-              </div>
-              <div>
-                <label className="text-sm text-white/80">E-Mail oder Telegram</label>
-                <input required placeholder="z. B. name@mail.com oder @handle" className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-              </div>
-              <div>
-                <label className="text-sm text-white/80">Kurz zu dir</label>
-                <textarea rows={4} placeholder="Wo stehst du? Welche Ziele hast du?" className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-              </div>
-              <button type="submit" className="w-full px-4 py-3 rounded" style={{ background: ACCENT }}>Anfrage senden</button>
-            </div>
-          </form>
+         <form
+  action="https://api.web3forms.com/submit"
+  method="POST"
+  className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
+>
+  {/*a4174bd0-9c62-4f19-aa22-5c22a03e8da2*/}
+  <input type="hidden" name="access_key" value="DEIN-WEB3FORMS-KEY" />
+  {/* Meta */}
+  <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
+  <input type="hidden" name="from_name" value="Creator-Base Website" />
+  {/* Antworten an Absender schicken */}
+  <input type="hidden" name="replyto" value="email" />
+  {/* Weiterleitung nach Erfolg */}
+  <input type="hidden" name="redirect" value="https://www.creator-base.com/danke" />
+  {/* Spam-Honeypot */}
+  <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
+
+  <div className="grid gap-4">
+    <div>
+      <label className="text-sm text-white/80">Dein Name</label>
+      <input name="name" required placeholder="Vor- und Nachname"
+        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+    </div>
+    <div>
+      <label className="text-sm text-white/80">E-Mail</label>
+      <input type="email" name="email" required placeholder="name@mail.com"
+        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+    </div>
+    <div>
+      <label className="text-sm text-white/80">Kurz zu dir</label>
+      <textarea name="message" rows={4} placeholder="Wo stehst du? Welche Ziele hast du?"
+        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+    </div>
+    <button type="submit" className="w-full px-4 py-3 rounded" style={{ background: "#f464b0" }}>
+      Anfrage senden
+    </button>
+  </div>
+</form>
         </div>
       </Section>
 
