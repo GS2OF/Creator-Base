@@ -371,21 +371,16 @@ export default function Page() {
               <li className="flex items-center gap-2"><CheckCircle2 className="size-4" style={{ color: ACCENT }} /> Unverbindlich & ehrlich</li>
             </ul>
           </div>
-         <form
+     <form
   action="https://api.web3forms.com/submit"
   method="POST"
   className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
 >
-  {/*a4174bd0-9c62-4f19-aa22-5c22a03e8da2*/}
   <input type="hidden" name="access_key" value="a4174bd0-9c62-4f19-aa22-5c22a03e8da2" />
-  {/* Meta */}
   <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
   <input type="hidden" name="from_name" value="Creator-Base Website" />
-  {/* Antworten an Absender schicken */}
   <input type="hidden" name="replyto" value="email" />
-  {/* Weiterleitung nach Erfolg */}
   <input type="hidden" name="redirect" value="https://www.creator-base.com/danke" />
-  {/* Spam-Honeypot */}
   <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
 
   <div className="grid gap-4">
