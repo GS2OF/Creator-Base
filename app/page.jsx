@@ -377,7 +377,7 @@ export default function Page() {
   className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
 >
   {/*a4174bd0-9c62-4f19-aa22-5c22a03e8da2*/}
-  <input type="hidden" name="access_key" value="DEIN-WEB3FORMS-KEY" />
+  <input type="hidden" name="access_key" value="a4174bd0-9c62-4f19-aa22-5c22a03e8da2" />
   {/* Meta */}
   <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
   <input type="hidden" name="from_name" value="Creator-Base Website" />
