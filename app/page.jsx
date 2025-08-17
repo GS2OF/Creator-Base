@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
   Target, Rocket, Handshake, Users, ShieldCheck, LineChart, EyeOff,
-  Check, X, Minus, ChevronRight, XCircle, Star
+  Check, X, Minus, ChevronRight, XCircle
 } from "lucide-react";
 
 const ACCENT = "#f464b0";
@@ -22,6 +22,34 @@ const Pill = ({ children }) => (
     {children}
   </span>
 );
+
+/* Gefüllte Sterne (★★★★★) */
+const Stars = ({ count = 5 }) => (
+  <div className="ml-auto flex items-center gap-0.5 text-[#FFD85A]" aria-label={`${count} Sterne`}>
+    {Array.from({ length: count }).map((_, i) => (
+      <span key={i} className="text-base leading-none">★</span>
+    ))}
+  </div>
+);
+
+/* Unscharfes „Porträt“ (Kopf/Schultern), generiert – anonym */
+const FaceBlur = ({ name = "Model" }) => {
+  let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  const hair = `hsl(${h}, 60%, 28%)`;
+  const skin = `hsl(${(h + 30) % 360}, 55%, 78%)`;
+  const bg   = `hsl(${(h + 200) % 360}, 55%, 22%)`;
+
+  return (
+    <div className="size-10 rounded-full overflow-hidden relative" aria-hidden>
+      <div className="absolute inset-0" style={{ background: bg }} />
+      <svg viewBox="0 0 100 100" className="absolute inset-0" style={{ filter: "blur(6px)" }}>
+        <circle cx="50" cy="36" r="26" fill={hair} />
+        <circle cx="50" cy="40" r="18" fill={skin} />
+        <ellipse cx="50" cy="80" rx="28" ry="18" fill={hair} />
+      </svg>
+    </div>
+  );
+};
 
 export default function Page() {
   const reduce = useReducedMotion();
@@ -123,38 +151,21 @@ export default function Page() {
     : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
-  /* ==== Referenzen – Daten + Helfer ==== */
+  /* ==== Referenzen – jetzt 9x MALOUM ==== */
   const TESTIMONIALS = [
-    { name: "Hannah L.", role: "OnlyFans (DACH)", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
-    { name: "Mia K.",    role: "Fansly",          text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
-    { name: "Lea S.",    role: "OnlyFans",       text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
-    { name: "Nora P.",   role: "Hybrid Model",   text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
-    { name: "Julia M.",  role: "OnlyFans",       text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
+    { name: "Hannah L.", role: "MALOUM",         text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
+    { name: "Mia K.",    role: "Fansly",         text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
+    { name: "Lea S.",    role: "MALOUM",         text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
+    { name: "Nora P.",   role: "MALOUM",         text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
+    { name: "Julia M.",  role: "MALOUM",         text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
     { name: "Alina R.",  role: "Fansly",         text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
-    { name: "Emma T.",   role: "OnlyFans",       text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
-    { name: "Sofia W.",  role: "Hybrid Model",   text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
-    { name: "Lara B.",   role: "OnlyFans",       text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
-    { name: "Zoe F.",    role: "Fansly",         text: "Check-ins halten mich accountable. Wachstum ist messbar." },
-    { name: "Paula D.",  role: "OnlyFans",       text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
+    { name: "Emma T.",   role: "MALOUM",         text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
+    { name: "Sofia W.",  role: "MALOUM",         text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
+    { name: "Lara B.",   role: "MALOUM",         text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
+    { name: "Zoe F.",    role: "MALOUM",         text: "Check-ins halten mich accountable. Wachstum ist messbar." },
+    { name: "Paula D.",  role: "MALOUM",         text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
     { name: "Kim A.",    role: "OnlyFans",       text: "PayPal-Fokus für DE-Fans war der Gamechanger." },
   ];
-
-  const initials = (name) => name.split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
-  const hueFromString = (s) => {
-    let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) % 360;
-    return h;
-  };
-
-  const AvatarBlur = ({ name }) => {
-    const h = hueFromString(name);
-    const grad = `linear-gradient(135deg, hsl(${h},70%,55%), hsl(${(h+40)%360},70%,45%))`;
-    return (
-      <div className="size-10 rounded-full overflow-hidden">
-        {/* absichtlich unscharf */}
-        <div style={{ background: grad, width:"100%", height:"100%", filter:"blur(2px)" }} />
-      </div>
-    );
-  };
 
   return (
     <>
@@ -477,16 +488,12 @@ export default function Page() {
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center gap-3">
-                <AvatarBlur name={t.name} />
+                <FaceBlur name={t.name} />
                 <div>
                   <div className="font-semibold">{t.name}</div>
                   <div className="text-xs text-white/60">{t.role}</div>
                 </div>
-                <div className="ml-auto flex items-center gap-0.5" aria-label="5 Sterne">
-                  {Array.from({length:5}).map((_,j)=>(
-                    <Star key={j} className="size-4" style={{ color: "#f8d03f" }} />
-                  ))}
-                </div>
+                <Stars count={5} />
               </div>
               <p className="mt-3 text-white/80 text-sm">“{t.text}”</p>
             </div>
