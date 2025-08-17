@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
   Target, Rocket, Handshake, Users, ShieldCheck, LineChart, EyeOff,
-  Check, X, Minus, ChevronRight, XCircle
+  Check, X, Minus, ChevronRight, XCircle, Star
 } from "lucide-react";
 
 const ACCENT = "#f464b0";
@@ -39,8 +39,8 @@ export default function Page() {
     goal: "subs",
     region: "global",
     live: false,
-    payout: "paypal", // PayPal bevorzugt
-    intro: ""         // Freitext
+    payout: "paypal",
+    intro: ""
   });
 
   function inferFromIntro(text) {
@@ -58,35 +58,21 @@ export default function Page() {
 
   function computePlatformScores(f) {
     const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
-
-    // Content-Fokus
     if (f.focus === "soft")     { s.MALOUM += 2; s.Fansly += 1; }
     if (f.focus === "erotik")   { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 1; }
     if (f.focus === "explicit") { s.OnlyFans += 3; s.ManyVids += 2; s.MALOUM += 1; }
-
-    // Anonymität
     if (f.anon) { s.MALOUM += 3; s.Fansly += 1; }
-
-    // Ziel
     if (f.goal === "subs")     { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; }
     if (f.goal === "ppv")      { s.OnlyFans += 3; s.MALOUM += 2; s.ManyVids += 1; }
     if (f.goal === "discover") { s.MALOUM += 2; s.Fansly += 2; }
-
-    // Region
     if (f.region === "dach")   { s.MALOUM += 2; }
     if (f.region === "us")     { s.OnlyFans += 2; s.Fansly += 1; }
     if (f.region === "global") { s.MALOUM += 1; s.OnlyFans += 1; s.Fansly += 1; }
-
-    // Live
     if (f.live) { s.Fansly += 2; s.OnlyFans += 1; }
-
-    // Auszahlung / Präferenz – PayPal statt Krypto
     if (f.payout === "paypal") { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; s.Fanvue += 1; s.ManyVids += 1; }
     if (f.payout === "fast")   { s.MALOUM += 1; s.OnlyFans += 1; s.Fanvue += 1; }
     if (f.payout === "highcut"){ s.Fanvue += 1; s.ManyVids += 1; }
-
-    s.MALOUM += 0.2; // leichter Tie-Breaker
-
+    s.MALOUM += 0.2;
     const arr = Object.entries(s).map(([name, score]) => ({ name, score }));
     arr.sort((a, b) => b.score - a.score);
     return arr;
@@ -97,13 +83,13 @@ export default function Page() {
     const inferred = inferFromIntro(pcForm.intro);
     const merged = { ...pcForm, ...inferred };
     setMatchContext(merged);
-    setMatchLoading(true);      // KI denkt…
-    setMatchStep(1);            // bleibt formal in Step 1, aber zeigt Loader
+    setMatchLoading(true);
+    setMatchStep(1);
     setTimeout(() => {
       const ranking = computePlatformScores(merged);
       setMatchResult(ranking);
       setMatchLoading(false);
-      setMatchStep(2);          // Ergebnis anzeigen
+      setMatchStep(2);
     }, 1200);
   }
 
@@ -131,12 +117,44 @@ export default function Page() {
       ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
       : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
 
-  // Progress-Label/Bar für Modal
+  // Progress UI
   const progressLabel = matchLoading
     ? "KI analysiert deine Angaben…"
     : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
-
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
+
+  /* ==== Referenzen – Daten + Helfer ==== */
+  const TESTIMONIALS = [
+    { name: "Hannah L.", role: "OnlyFans (DACH)", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
+    { name: "Mia K.",    role: "Fansly",          text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
+    { name: "Lea S.",    role: "OnlyFans",       text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
+    { name: "Nora P.",   role: "Hybrid Model",   text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
+    { name: "Julia M.",  role: "OnlyFans",       text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
+    { name: "Alina R.",  role: "Fansly",         text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
+    { name: "Emma T.",   role: "OnlyFans",       text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
+    { name: "Sofia W.",  role: "Hybrid Model",   text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
+    { name: "Lara B.",   role: "OnlyFans",       text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
+    { name: "Zoe F.",    role: "Fansly",         text: "Check-ins halten mich accountable. Wachstum ist messbar." },
+    { name: "Paula D.",  role: "OnlyFans",       text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
+    { name: "Kim A.",    role: "OnlyFans",       text: "PayPal-Fokus für DE-Fans war der Gamechanger." },
+  ];
+
+  const initials = (name) => name.split(" ").map(p => p[0]).join("").slice(0,2).toUpperCase();
+  const hueFromString = (s) => {
+    let h = 0; for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) % 360;
+    return h;
+  };
+
+  const AvatarBlur = ({ name }) => {
+    const h = hueFromString(name);
+    const grad = `linear-gradient(135deg, hsl(${h},70%,55%), hsl(${(h+40)%360},70%,45%))`;
+    return (
+      <div className="size-10 rounded-full overflow-hidden">
+        {/* absichtlich unscharf */}
+        <div style={{ background: grad, width:"100%", height:"100%", filter:"blur(2px)" }} />
+      </div>
+    );
+  };
 
   return (
     <>
@@ -165,6 +183,7 @@ export default function Page() {
             <a href="#vorteile" className="hover:text-white">Vorteile</a>
             <a href="#leistungen" className="hover:text-white">Leistungen</a>
             <a href="#prozess" className="hover:text-white">Ablauf</a>
+            <a href="#referenzen" className="hover:text-white">Referenzen</a>
             <a href="#vergleich" className="hover:text-white">Vergleich</a>
           </nav>
           <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
@@ -211,12 +230,13 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 Call buchen <ArrowRight className="size-5" />
               </a>
-          
-              {/* Neuer Button: Plattform Match (mit NEU-Badge) */}
+
+              {/* Plattform Match jetzt rosa wie Call buchen */}
               <button
                 type="button"
                 onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
-                className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20"
+                className="relative px-5 py-3 rounded-xl inline-flex items-center text-white"
+                style={{ background: ACCENT }}
               >
                 Plattform Match
                 <span
@@ -445,6 +465,32 @@ export default function Page() {
               </motion.li>
             ))}
           </ol>
+        </div>
+      </Section>
+
+      {/* REFERENZEN */}
+      <Section id="referenzen" className="py-6 md:py-12">
+        <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Referenzen</h2>
+        <p className="text-white/75 max-w-2xl mb-6">Echte Stimmen aus unserer Creator-Base – diskret & auf den Punkt.</p>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {TESTIMONIALS.map((t, i) => (
+            <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center gap-3">
+                <AvatarBlur name={t.name} />
+                <div>
+                  <div className="font-semibold">{t.name}</div>
+                  <div className="text-xs text-white/60">{t.role}</div>
+                </div>
+                <div className="ml-auto flex items-center gap-0.5" aria-label="5 Sterne">
+                  {Array.from({length:5}).map((_,j)=>(
+                    <Star key={j} className="size-4" style={{ color: "#f8d03f" }} />
+                  ))}
+                </div>
+              </div>
+              <p className="mt-3 text-white/80 text-sm">“{t.text}”</p>
+            </div>
+          ))}
         </div>
       </Section>
 
