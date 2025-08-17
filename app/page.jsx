@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
@@ -33,7 +33,7 @@ const Stars = ({ rating = 5 }) => {
         <span key={`full-${i}`} className="text-base leading-none text-[#FFD85A]">★</span>
       ))}
       {Array.from({ length: empty }).map((_, i) => (
-        <span key={`empty-${i}`} className="text-base leading-none text-white/30">☆</span>
+        <span key={`empty-${i}`} className="text-base leading-none text-white/30">★</span>
       ))}
     </div>
   );
@@ -57,7 +57,7 @@ const FaceBlur = ({ name = "Model" }) => {
   );
 };
 
-/* Realistischer, unscharfer Avatar auf Basis echter Fotos (Unsplash) */
+/* Realistischer, unscharfer Avatar (Unsplash) */
 const AvatarReal = ({ name, src, blur = 6 }) => {
   const [error, setError] = useState(false);
   if (!src || error) return <FaceBlur name={name} />;
@@ -84,6 +84,14 @@ export default function Page() {
   const [matchLoading, setMatchLoading] = useState(false); // KI denkt…
   const [matchResult, setMatchResult] = useState(null);
   const [matchContext, setMatchContext] = useState(null); // für Begründungen
+
+  // Body-Scroll locken, wenn Modal offen (Mobile-Fix)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    if (matchOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = prev || "";
+    return () => { document.body.style.overflow = prev || ""; };
+  }, [matchOpen]);
 
   const [pcForm, setPcForm] = useState({
     focus: "soft",
@@ -175,20 +183,68 @@ export default function Page() {
     : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
-  /* ==== Referenzen – 9x MALOUM, echte Porträts (unscharf) ==== */
+  /* ==== Referenzen – 9x MALOUM, echte Porträts (unscharf) + Texte ==== */
   const TESTIMONIALS = [
-    { name: "Hannah L.", role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Mia K.",    role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Lea S.",    role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Nora P.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Julia M.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Alina R.",  role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Emma T.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Sofia W.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Lara B.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Zoe F.",    role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Paula D.",  role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1541534401786-2077eed87a6f?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
-    { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    {
+      name: "Hannah L.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur."
+    },
+    {
+      name: "Mia K.", role: "Fansly", rating: 4,
+      img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze."
+    },
+    {
+      name: "Lea S.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow."
+    },
+    {
+      name: "Nora P.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert."
+    },
+    {
+      name: "Julia M.", role: "MALOUM", rating: 4,
+      img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt."
+    },
+    {
+      name: "Alina R.", role: "Fansly", rating: 4,
+      img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor."
+    },
+    {
+      name: "Emma T.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan."
+    },
+    {
+      name: "Sofia W.", role: "MALOUM", rating: 4,
+      img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag."
+    },
+    {
+      name: "Lara B.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall."
+    },
+    {
+      name: "Zoe F.", role: "MALOUM", rating: 4,
+      img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Check-ins halten mich accountable. Wachstum ist messbar."
+    },
+    {
+      name: "Paula D.", role: "MALOUM", rating: 5,
+      img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla."
+    },
+    {
+      name: "Kim A.", role: "OnlyFans", rating: 4,
+      img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      text: "PayPal-Fokus für DE-Fans war der Gamechanger."
+    },
   ];
 
   return (
@@ -266,12 +322,11 @@ export default function Page() {
                 Call buchen <ArrowRight className="size-5" />
               </a>
 
-              {/* Plattform Match rosa wie "Call buchen" */}
+              {/* Plattform Match – dezent (kein Pink) */}
               <button
                 type="button"
                 onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
-                className="relative px-5 py-3 rounded-xl inline-flex items-center text-white"
-                style={{ background: ACCENT }}
+                className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20 text-white"
               >
                 Plattform Match
                 <span
@@ -612,200 +667,204 @@ export default function Page() {
       {/* ==== Plattform Match Modal (2 Steps + KI-Loader) ==== */}
       {matchOpen && (
         <div className="fixed inset-0 z-[70]">
+          {/* Overlay */}
           <div className="absolute inset-0 bg-black/60" onClick={() => setMatchOpen(false)} />
-          <div className="absolute inset-x-0 top-0 md:top-10 md:inset-x-1/2 md:-translate-x-1/2 md:w-[880px]">
-            <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden">
-              {/* Header */}
-              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-white/60">Creator-Base</div>
-                  <div className="text-lg font-semibold">Plattform Match</div>
+          {/* Scroll-Container (Mobile fix) */}
+          <div className="relative z-10 h-full overflow-y-auto">
+            <div className="min-h-full flex items-start md:items-center justify-center p-4">
+              <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[880px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs text-white/60">Creator-Base</div>
+                    <div className="text-lg font-semibold">Plattform Match</div>
+                  </div>
+                  <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
+                    <XCircle className="size-5" /> Schließen
+                  </button>
                 </div>
-                <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
-                  <XCircle className="size-5" /> Schließen
-                </button>
-              </div>
 
-              {/* Progress */}
-              <div className="px-5 py-2">
-                <div className="h-1 w-full bg-white/10 rounded">
-                  <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
+                {/* Progress */}
+                <div className="px-5 py-2">
+                  <div className="h-1 w-full bg-white/10 rounded">
+                    <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
+                  </div>
+                  <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
                 </div>
-                <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
-              </div>
 
-              {/* STEP 1 (Form) */}
-              {matchStep === 1 && !matchLoading && (
-                <form onSubmit={submitPlatformMatch} className="px-5 pb-5 grid gap-4">
-                  {/* KI-Intro */}
-                  <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                    <div className="text-xs text-white/60">KI-gestützt</div>
-                    <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
-                    <p className="text-white/70 text-sm mt-1">
-                      z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
-                    </p>
-                    <textarea
-                      value={pcForm.intro}
-                      onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
-                      rows={3}
-                      placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
-                      className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
+                {/* STEP 1 (Form) */}
+                {matchStep === 1 && !matchLoading && (
+                  <form onSubmit={submitPlatformMatch} className="px-5 pb-5 grid gap-4">
+                    {/* KI-Intro */}
+                    <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                      <div className="text-xs text-white/60">KI-gestützt</div>
+                      <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
+                      <p className="text-white/70 text-sm mt-1">
+                        z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
+                      </p>
+                      <textarea
+                        value={pcForm.intro}
+                        onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
+                        rows={3}
+                        placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
+                        className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
+                      />
+                      <p className="text-white/60 text-xs mt-2">
+                        Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
+                      </p>
+                    </div>
+
+                    {/* Kurze Auswahlfragen */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm text-white/80">Content-Fokus</label>
+                        <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="soft">Soft / Teasing</option>
+                          <option value="erotik">Erotik</option>
+                          <option value="explicit">Explizit</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-white/80">Anonym bleiben?</label>
+                        <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="no">Nein</option>
+                          <option value="yes">Ja</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-white/80">Primäres Ziel</label>
+                        <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="subs">Abos / Stammkundschaft</option>
+                          <option value="ppv">PPV & DMs</option>
+                          <option value="discover">Reichweite</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-white/80">Ziel-Region</label>
+                        <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="global">Global</option>
+                          <option value="dach">DACH</option>
+                          <option value="us">USA-lastig</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-white/80">Live-Streams wichtig?</label>
+                        <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="no">Nicht wichtig</option>
+                          <option value="yes">Wichtig</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
+                        <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
+                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                          <option value="paypal">PayPal bevorzugt</option>
+                          <option value="fast">Schnelle Auszahlung</option>
+                          <option value="highcut">Hoher %-Anteil</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                      <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Abbrechen</button>
+                      <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
+                        Auswerten <ChevronRight className="size-4" />
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* KI-Ladezustand */}
+                {matchStep === 1 && matchLoading && (
+                  <div className="px-5 py-14 flex flex-col items-center text-center gap-3">
+                    <div
+                      className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
+                      style={{ borderTopColor: ACCENT }}
+                      aria-label="KI denkt…"
                     />
-                    <p className="text-white/60 text-xs mt-2">
-                      Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
-                    </p>
+                    <div className="text-white/80 font-medium">Unsere KI denkt…</div>
+                    <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
                   </div>
+                )}
 
-                  {/* Kurze Auswahlfragen */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-white/80">Content-Fokus</label>
-                      <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="soft">Soft / Teasing</option>
-                        <option value="erotik">Erotik</option>
-                        <option value="explicit">Explizit</option>
-                      </select>
+                {/* STEP 2 – Ergebnis */}
+                {matchStep === 2 && matchResult && (
+                  <div className="px-5 pb-6">
+                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
+                      Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
                     </div>
-                    <div>
-                      <label className="text-sm text-white/80">Anonym bleiben?</label>
-                      <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="no">Nein</option>
-                        <option value="yes">Ja</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-white/80">Primäres Ziel</label>
-                      <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="subs">Abos / Stammkundschaft</option>
-                        <option value="ppv">PPV & DMs</option>
-                        <option value="discover">Reichweite</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-white/80">Ziel-Region</label>
-                      <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="global">Global</option>
-                        <option value="dach">DACH</option>
-                        <option value="us">USA-lastig</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-white/80">Live-Streams wichtig?</label>
-                      <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="no">Nicht wichtig</option>
-                        <option value="yes">Wichtig</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
-                      <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
-                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                        <option value="paypal">PayPal bevorzugt</option>
-                        <option value="fast">Schnelle Auszahlung</option>
-                        <option value="highcut">Hoher %-Anteil</option>
-                      </select>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Abbrechen</button>
-                    <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
-                      Auswerten <ChevronRight className="size-4" />
-                    </button>
-                  </div>
-                </form>
-              )}
+                    {(() => {
+                      const top = matchResult.slice(0,3);
+                      const mal = matchResult.find(p => p.name === "MALOUM");
+                      const hasMal = top.some(p => p.name === "MALOUM");
+                      const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
 
-              {/* KI-Ladezustand */}
-              {matchStep === 1 && matchLoading && (
-                <div className="px-5 py-14 flex flex-col items-center text-center gap-3">
-                  <div
-                    className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
-                    style={{ borderTopColor: ACCENT }}
-                    aria-label="KI denkt…"
-                  />
-                  <div className="text-white/80 font-medium">Unsere KI denkt…</div>
-                  <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
-                </div>
-              )}
-
-              {/* STEP 2 – Ergebnis */}
-              {matchStep === 2 && matchResult && (
-                <div className="px-5 pb-6">
-                  <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
-                    Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
-                  </div>
-
-                  {(() => {
-                    const top = matchResult.slice(0,3);
-                    const mal = matchResult.find(p => p.name === "MALOUM");
-                    const hasMal = top.some(p => p.name === "MALOUM");
-                    const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
-
-                    const card = (p) => (
-                      <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="text-xl font-semibold">{p.name}</div>
-                            <div className="text-white/70 text-sm">Score {p.score.toFixed(1)}</div>
+                      const card = (p) => (
+                        <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="text-xl font-semibold">{p.name}</div>
+                              <div className="text-white/70 text-sm">Score {p.score.toFixed(1)}</div>
+                            </div>
+                            {p.name === "MALOUM" && (
+                              <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
+                                Unsere Empfehlung
+                              </span>
+                            )}
                           </div>
-                          {p.name === "MALOUM" && (
-                            <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
-                              Unsere Empfehlung
-                            </span>
-                          )}
+                          <div className="mt-3">
+                            <div className="text-white/70 text-sm mb-1">Features</div>
+                            <ul className="space-y-2">
+                              {FEATURES.map(f => {
+                                const v = PROFILE[p.name]?.[f.key];
+                                return (
+                                  <li key={f.key} className="flex items-center justify-between">
+                                    <span className="text-white/80">{f.label}</span>
+                                    <IconCell v={v} />
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
                         </div>
-                        <div className="mt-3">
-                          <div className="text-white/70 text-sm mb-1">Features</div>
-                          <ul className="space-y-2">
-                            {FEATURES.map(f => {
-                              const v = PROFILE[p.name]?.[f.key];
-                              return (
-                                <li key={f.key} className="flex items-center justify-between">
-                                  <span className="text-white/80">{f.label}</span>
-                                  <IconCell v={v} />
-                                </li>
-                              );
-                            })}
-                          </ul>
+                      );
+
+                      return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
+                    })()}
+
+                    <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
+                      <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
+                      <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
+                      <ul className="mt-3 space-y-2 text-white/90">
+                        {(() => {
+                          const r = [];
+                          if (!matchContext) return null;
+                          if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
+                          if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
+                          if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
+                          if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
+                          if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
+                          return r.map((t, i) => <li key={i}>• {t}</li>);
+                        })()}
+                      </ul>
+
+                      <div className="mt-4 flex items-center justify-between">
+                        <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>Kostenloses Erstgespräch</a>
+                        <div className="flex items-center gap-2">
+                          <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
+                          <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Schließen</button>
                         </div>
-                      </div>
-                    );
-
-                    return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
-                  })()}
-
-                  <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                    <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
-                    <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
-                    <ul className="mt-3 space-y-2 text-white/90">
-                      {(() => {
-                        const r = [];
-                        if (!matchContext) return null;
-                        if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
-                        if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
-                        if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
-                        if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
-                        if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
-                        return r.map((t, i) => <li key={i}>• {t}</li>);
-                      })()}
-                    </ul>
-
-                    <div className="mt-4 flex items-center justify-between">
-                      <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>Kostenloses Erstgespräch</a>
-                      <div className="flex items-center gap-2">
-                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
-                        <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Schließen</button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
