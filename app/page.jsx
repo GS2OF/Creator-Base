@@ -29,6 +29,7 @@ export default function Page() {
   /* ==== Plattform Match – State & Logik ==== */
   const [matchOpen, setMatchOpen] = useState(false);
   const [matchStep, setMatchStep] = useState(1);   // 1=Fragen, 2=Ergebnis
+  const [matchLoading, setMatchLoading] = useState(false); // KI denkt…
   const [matchResult, setMatchResult] = useState(null);
   const [matchContext, setMatchContext] = useState(null); // für Begründungen
 
@@ -95,10 +96,15 @@ export default function Page() {
     e?.preventDefault?.();
     const inferred = inferFromIntro(pcForm.intro);
     const merged = { ...pcForm, ...inferred };
-    const ranking = computePlatformScores(merged);
     setMatchContext(merged);
-    setMatchResult(ranking);
-    setMatchStep(2);
+    setMatchLoading(true);      // KI denkt…
+    setMatchStep(1);            // bleibt formal in Step 1, aber zeigt Loader
+    setTimeout(() => {
+      const ranking = computePlatformScores(merged);
+      setMatchResult(ranking);
+      setMatchLoading(false);
+      setMatchStep(2);          // Ergebnis anzeigen
+    }, 1200);
   }
 
   const FEATURES = [
@@ -124,6 +130,13 @@ export default function Page() {
     : v === false
       ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
       : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
+
+  // Progress-Label/Bar für Modal
+  const progressLabel = matchLoading
+    ? "KI analysiert deine Angaben…"
+    : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
+
+  const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
   return (
     <>
@@ -151,7 +164,7 @@ export default function Page() {
           <nav className="hidden md:flex items-center gap-6 text-white/80">
             <a href="#vorteile" className="hover:text-white">Vorteile</a>
             <a href="#leistungen" className="hover:text-white">Leistungen</a>
-            <a href="#prozess" className="hover:text-white">Prozess</a>
+            <a href="#prozess" className="hover:text-white">Ablauf</a>
             <a href="#vergleich" className="hover:text-white">Vergleich</a>
           </nav>
           <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
@@ -199,15 +212,21 @@ export default function Page() {
                 Call buchen <ArrowRight className="size-5" />
               </a>
               <a href="#prozess" className="px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20">
-                So arbeiten wir
+                Ablauf
               </a>
-              {/* Neuer Button: Plattform Match */}
+              {/* Neuer Button: Plattform Match (mit NEU-Badge) */}
               <button
                 type="button"
-                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); }}
-                className="px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20"
+                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
+                className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20"
               >
                 Plattform Match
+                <span
+                  className="absolute -top-2 -right-2 text-[10px] font-semibold px-2 py-0.5 rounded"
+                  style={{ background: ACCENT + "26", color: ACCENT }}
+                >
+                  NEU
+                </span>
               </button>
             </div>
 
@@ -515,7 +534,7 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* ==== Plattform Match Modal (2 Steps) ==== */}
+      {/* ==== Plattform Match Modal (2 Steps + KI-Loader) ==== */}
       {matchOpen && (
         <div className="fixed inset-0 z-[70]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMatchOpen(false)} />
@@ -535,13 +554,13 @@ export default function Page() {
               {/* Progress */}
               <div className="px-5 py-2">
                 <div className="h-1 w-full bg-white/10 rounded">
-                  <div className="h-1 rounded" style={{ width: matchStep===1?'50%':'100%', background:ACCENT }} />
+                  <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
                 </div>
-                <div className="mt-2 text-xs text-white/60">{matchStep===1?'Schritt 1/2: Prioritäten & Fragen':'Schritt 2/2: Ergebnis & Vergleich'}</div>
+                <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
               </div>
 
-              {/* STEP 1 */}
-              {matchStep === 1 && (
+              {/* STEP 1 (Form) */}
+              {matchStep === 1 && !matchLoading && (
                 <form onSubmit={submitPlatformMatch} className="px-5 pb-5 grid gap-4">
                   {/* KI-Intro */}
                   <div className="rounded-xl bg-white/5 border border-white/10 p-4">
@@ -627,6 +646,19 @@ export default function Page() {
                 </form>
               )}
 
+              {/* KI-Ladezustand */}
+              {matchStep === 1 && matchLoading && (
+                <div className="px-5 py-14 flex flex-col items-center text-center gap-3">
+                  <div
+                    className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
+                    style={{ borderTopColor: ACCENT }}
+                    aria-label="KI denkt…"
+                  />
+                  <div className="text-white/80 font-medium">Unsere KI denkt…</div>
+                  <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
+                </div>
+              )}
+
               {/* STEP 2 – Ergebnis */}
               {matchStep === 2 && matchResult && (
                 <div className="px-5 pb-6">
@@ -692,7 +724,7 @@ export default function Page() {
                     <div className="mt-4 flex items-center justify-between">
                       <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>Kostenloses Erstgespräch</a>
                       <div className="flex items-center gap-2">
-                        <button onClick={()=>setMatchStep(1)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
+                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
                         <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Schließen</button>
                       </div>
                     </div>
