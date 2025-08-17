@@ -1,11 +1,11 @@
-
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
-  Target, Rocket, Handshake, Users, ShieldCheck, LineChart, EyeOff
+  Target, Rocket, Handshake, Users, ShieldCheck, LineChart, EyeOff,
+  Check, X, Minus, ChevronRight, XCircle
 } from "lucide-react";
 
 const ACCENT = "#f464b0";
@@ -25,6 +25,105 @@ const Pill = ({ children }) => (
 
 export default function Page() {
   const reduce = useReducedMotion();
+
+  /* ==== Plattform Match – State & Logik ==== */
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchStep, setMatchStep] = useState(1);   // 1=Fragen, 2=Ergebnis
+  const [matchResult, setMatchResult] = useState(null);
+  const [matchContext, setMatchContext] = useState(null); // für Begründungen
+
+  const [pcForm, setPcForm] = useState({
+    focus: "soft",
+    anon: false,
+    goal: "subs",
+    region: "global",
+    live: false,
+    payout: "paypal", // PayPal bevorzugt
+    intro: ""         // Freitext
+  });
+
+  function inferFromIntro(text) {
+    const t = (text || "").toLowerCase();
+    const u = {};
+    if (/anonym|ohne gesicht|diskret/.test(t)) u.anon = true;
+    if (/abo|subscription|subs/.test(t)) u.goal = "subs";
+    if (/(ppv|dm|direct|nachricht|pay per view|upsell)/.test(t)) u.goal = "ppv";
+    if (/live/.test(t)) u.live = true;
+    if (/\bde\b|deutsch|german|dach/.test(t)) u.region = "dach";
+    if (/\bus\b|usa/.test(t)) u.region = "us";
+    if (/paypal/.test(t)) u.payout = "paypal";
+    return u;
+  }
+
+  function computePlatformScores(f) {
+    const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
+
+    // Content-Fokus
+    if (f.focus === "soft")     { s.MALOUM += 2; s.Fansly += 1; }
+    if (f.focus === "erotik")   { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 1; }
+    if (f.focus === "explicit") { s.OnlyFans += 3; s.ManyVids += 2; s.MALOUM += 1; }
+
+    // Anonymität
+    if (f.anon) { s.MALOUM += 3; s.Fansly += 1; }
+
+    // Ziel
+    if (f.goal === "subs")     { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; }
+    if (f.goal === "ppv")      { s.OnlyFans += 3; s.MALOUM += 2; s.ManyVids += 1; }
+    if (f.goal === "discover") { s.MALOUM += 2; s.Fansly += 2; }
+
+    // Region
+    if (f.region === "dach")   { s.MALOUM += 2; }
+    if (f.region === "us")     { s.OnlyFans += 2; s.Fansly += 1; }
+    if (f.region === "global") { s.MALOUM += 1; s.OnlyFans += 1; s.Fansly += 1; }
+
+    // Live
+    if (f.live) { s.Fansly += 2; s.OnlyFans += 1; }
+
+    // Auszahlung / Präferenz – PayPal statt Krypto
+    if (f.payout === "paypal") { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; s.Fanvue += 1; s.ManyVids += 1; }
+    if (f.payout === "fast")   { s.MALOUM += 1; s.OnlyFans += 1; s.Fanvue += 1; }
+    if (f.payout === "highcut"){ s.Fanvue += 1; s.ManyVids += 1; }
+
+    s.MALOUM += 0.2; // leichter Tie-Breaker
+
+    const arr = Object.entries(s).map(([name, score]) => ({ name, score }));
+    arr.sort((a, b) => b.score - a.score);
+    return arr;
+  }
+
+  function submitPlatformMatch(e) {
+    e?.preventDefault?.();
+    const inferred = inferFromIntro(pcForm.intro);
+    const merged = { ...pcForm, ...inferred };
+    const ranking = computePlatformScores(merged);
+    setMatchContext(merged);
+    setMatchResult(ranking);
+    setMatchStep(2);
+  }
+
+  const FEATURES = [
+    { key:"anon",    label:"Anonymität möglich" },
+    { key:"ppv",     label:"Stark für Abos & PPV" },
+    { key:"live",    label:"Live-Streams" },
+    { key:"fast",    label:"Schnelle Auszahlung" },
+    { key:"paypal",  label:"PayPal verfügbar" },
+    { key:"privacy", label:"DSGVO/Privatsphäre" },
+    { key:"de",      label:"DE-Support" }
+  ];
+
+  const PROFILE = {
+    MALOUM:   { anon:true,  ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:true  },
+    OnlyFans: { anon:false, ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
+    Fansly:   { anon:true,  ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
+    Fanvue:   { anon:false, ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:false },
+    ManyVids: { anon:false, ppv:true, live:false, fast:false, paypal:true,  privacy:true, de:false }
+  };
+
+  const IconCell = ({v}) => v === true
+    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
+    : v === false
+      ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
+      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
 
   return (
     <>
@@ -102,6 +201,14 @@ export default function Page() {
               <a href="#prozess" className="px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20">
                 So arbeiten wir
               </a>
+              {/* Neuer Button: Plattform Match */}
+              <button
+                type="button"
+                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); }}
+                className="px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20"
+              >
+                Plattform Match
+              </button>
             </div>
 
             {/* Trust-Punkte */}
@@ -371,41 +478,231 @@ export default function Page() {
               <li className="flex items-center gap-2"><CheckCircle2 className="size-4" style={{ color: ACCENT }} /> Unverbindlich & ehrlich</li>
             </ul>
           </div>
-     <form
-  action="https://api.web3forms.com/submit"
-  method="POST"
-  className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
->
-  <input type="hidden" name="access_key" value="a4174bd0-9c62-4f19-aa22-5c22a03e8da2" />
-  <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
-  <input type="hidden" name="from_name" value="Creator-Base Website" />
-  <input type="hidden" name="replyto" value="email" />
-  <input type="hidden" name="redirect" value="https://www.creator-base.com/danke" />
-  <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
 
-  <div className="grid gap-4">
-    <div>
-      <label className="text-sm text-white/80">Dein Name</label>
-      <input name="name" required placeholder="Vor- und Nachname"
-        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-    </div>
-    <div>
-      <label className="text-sm text-white/80">E-Mail</label>
-      <input type="email" name="email" required placeholder="name@mail.com"
-        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-    </div>
-    <div>
-      <label className="text-sm text-white/80">Kurz zu dir</label>
-      <textarea name="message" rows={4} placeholder="Wo stehst du? Welche Ziele hast du?"
-        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
-    </div>
-    <button type="submit" className="w-full px-4 py-3 rounded" style={{ background: "#f464b0" }}>
-      Anfrage senden
-    </button>
-  </div>
-</form>
+          <form
+            action="https://api.web3forms.com/submit"
+            method="POST"
+            className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
+          >
+            <input type="hidden" name="access_key" value="a4174bd0-9c62-4f19-aa22-5c22a03e8da2" />
+            <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
+            <input type="hidden" name="from_name" value="Creator-Base Website" />
+            <input type="hidden" name="replyto" value="email" />
+            <input type="hidden" name="redirect" value="https://www.creator-base.com/danke" />
+            <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
+
+            <div className="grid gap-4">
+              <div>
+                <label className="text-sm text-white/80">Dein Name</label>
+                <input name="name" required placeholder="Vor- und Nachname"
+                  className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+              </div>
+              <div>
+                <label className="text-sm text-white/80">E-Mail</label>
+                <input type="email" name="email" required placeholder="name@mail.com"
+                  className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+              </div>
+              <div>
+                <label className="text-sm text-white/80">Kurz zu dir</label>
+                <textarea name="message" rows={4} placeholder="Wo stehst du? Welche Ziele hast du?"
+                  className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
+              </div>
+              <button type="submit" className="w-full px-4 py-3 rounded" style={{ background: ACCENT }}>
+                Anfrage senden
+              </button>
+            </div>
+          </form>
         </div>
       </Section>
+
+      {/* ==== Plattform Match Modal (2 Steps) ==== */}
+      {matchOpen && (
+        <div className="fixed inset-0 z-[70]">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setMatchOpen(false)} />
+          <div className="absolute inset-x-0 top-0 md:top-10 md:inset-x-1/2 md:-translate-x-1/2 md:w-[880px]">
+            <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-white/60">Creator-Base</div>
+                  <div className="text-lg font-semibold">Plattform Match</div>
+                </div>
+                <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
+                  <XCircle className="size-5" /> Schließen
+                </button>
+              </div>
+
+              {/* Progress */}
+              <div className="px-5 py-2">
+                <div className="h-1 w-full bg-white/10 rounded">
+                  <div className="h-1 rounded" style={{ width: matchStep===1?'50%':'100%', background:ACCENT }} />
+                </div>
+                <div className="mt-2 text-xs text-white/60">{matchStep===1?'Schritt 1/2: Prioritäten & Fragen':'Schritt 2/2: Ergebnis & Vergleich'}</div>
+              </div>
+
+              {/* STEP 1 */}
+              {matchStep === 1 && (
+                <form onSubmit={submitPlatformMatch} className="px-5 pb-5 grid gap-4">
+                  {/* KI-Intro */}
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                    <div className="text-xs text-white/60">KI-gestützt</div>
+                    <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
+                    <p className="text-white/70 text-sm mt-1">
+                      z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
+                    </p>
+                    <textarea
+                      value={pcForm.intro}
+                      onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
+                      rows={3}
+                      placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
+                      className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
+                    />
+                    <p className="text-white/60 text-xs mt-2">
+                      Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
+                    </p>
+                  </div>
+
+                  {/* Kurze Auswahlfragen */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-white/80">Content-Fokus</label>
+                      <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="soft">Soft / Teasing</option>
+                        <option value="erotik">Erotik</option>
+                        <option value="explicit">Explizit</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-white/80">Anonym bleiben?</label>
+                      <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="no">Nein</option>
+                        <option value="yes">Ja</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-white/80">Primäres Ziel</label>
+                      <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="subs">Abos / Stammkundschaft</option>
+                        <option value="ppv">PPV & DMs</option>
+                        <option value="discover">Reichweite</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-white/80">Ziel-Region</label>
+                      <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="global">Global</option>
+                        <option value="dach">DACH</option>
+                        <option value="us">USA-lastig</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-white/80">Live-Streams wichtig?</label>
+                      <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="no">Nicht wichtig</option>
+                        <option value="yes">Wichtig</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
+                      <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
+                        className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                        <option value="paypal">PayPal bevorzugt</option>
+                        <option value="fast">Schnelle Auszahlung</option>
+                        <option value="highcut">Hoher %-Anteil</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Abbrechen</button>
+                    <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
+                      Auswerten <ChevronRight className="size-4" />
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* STEP 2 – Ergebnis */}
+              {matchStep === 2 && matchResult && (
+                <div className="px-5 pb-6">
+                  <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
+                    Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
+                  </div>
+
+                  {(() => {
+                    const top = matchResult.slice(0,3);
+                    const mal = matchResult.find(p => p.name === "MALOUM");
+                    const hasMal = top.some(p => p.name === "MALOUM");
+                    const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
+
+                    const card = (p) => (
+                      <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="text-xl font-semibold">{p.name}</div>
+                            <div className="text-white/70 text-sm">Score {p.score.toFixed(1)}</div>
+                          </div>
+                          {p.name === "MALOUM" && (
+                            <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
+                              Unsere Empfehlung
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-3">
+                          <div className="text-white/70 text-sm mb-1">Features</div>
+                          <ul className="space-y-2">
+                            {FEATURES.map(f => {
+                              const v = PROFILE[p.name]?.[f.key];
+                              return (
+                                <li key={f.key} className="flex items-center justify-between">
+                                  <span className="text-white/80">{f.label}</span>
+                                  <IconCell v={v} />
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      </div>
+                    );
+
+                    return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
+                  })()}
+
+                  <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
+                    <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
+                    <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
+                    <ul className="mt-3 space-y-2 text-white/90">
+                      {(() => {
+                        const r = [];
+                        if (!matchContext) return null;
+                        if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
+                        if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
+                        if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
+                        if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
+                        if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
+                        return r.map((t, i) => <li key={i}>• {t}</li>);
+                      })()}
+                    </ul>
+
+                    <div className="mt-4 flex items-center justify-between">
+                      <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>Kostenloses Erstgespräch</a>
+                      <div className="flex items-center gap-2">
+                        <button onClick={()=>setMatchStep(1)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
+                        <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Schließen</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FOOTER */}
       <Section className="py-12">
