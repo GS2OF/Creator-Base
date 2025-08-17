@@ -23,22 +23,28 @@ const Pill = ({ children }) => (
   </span>
 );
 
-/* Gefüllte Sterne (★★★★★) */
-const Stars = ({ count = 5 }) => (
-  <div className="ml-auto flex items-center gap-0.5 text-[#FFD85A]" aria-label={`${count} Sterne`}>
-    {Array.from({ length: count }).map((_, i) => (
-      <span key={i} className="text-base leading-none">★</span>
-    ))}
-  </div>
-);
+/* ★ Bewertungssterne – 4/5 & 5/5 möglich */
+const Stars = ({ rating = 5 }) => {
+  const full = Math.max(0, Math.min(5, Math.round(rating)));
+  const empty = 5 - full;
+  return (
+    <div className="ml-auto flex items-center gap-0.5" aria-label={`${full} von 5 Sternen`}>
+      {Array.from({ length: full }).map((_, i) => (
+        <span key={`full-${i}`} className="text-base leading-none text-[#FFD85A]">★</span>
+      ))}
+      {Array.from({ length: empty }).map((_, i) => (
+        <span key={`empty-${i}`} className="text-base leading-none text-white/30">☆</span>
+      ))}
+    </div>
+  );
+};
 
-/* Unscharfes „Porträt“ (Kopf/Schultern), generiert – anonym */
+/* Fallback-Avatar (Silhouette), falls Bild nicht lädt */
 const FaceBlur = ({ name = "Model" }) => {
   let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
   const hair = `hsl(${h}, 60%, 28%)`;
   const skin = `hsl(${(h + 30) % 360}, 55%, 78%)`;
   const bg   = `hsl(${(h + 200) % 360}, 55%, 22%)`;
-
   return (
     <div className="size-10 rounded-full overflow-hidden relative" aria-hidden>
       <div className="absolute inset-0" style={{ background: bg }} />
@@ -47,6 +53,24 @@ const FaceBlur = ({ name = "Model" }) => {
         <circle cx="50" cy="40" r="18" fill={skin} />
         <ellipse cx="50" cy="80" rx="28" ry="18" fill={hair} />
       </svg>
+    </div>
+  );
+};
+
+/* Realistischer, unscharfer Avatar auf Basis echter Fotos (Unsplash) */
+const AvatarReal = ({ name, src, blur = 6 }) => {
+  const [error, setError] = useState(false);
+  if (!src || error) return <FaceBlur name={name} />;
+  return (
+    <div className="size-10 rounded-full overflow-hidden">
+      <img
+        src={src}
+        alt={name}
+        loading="lazy"
+        className="w-full h-full object-cover"
+        style={{ filter: `blur(${blur}px) grayscale(10%)`, transform: "scale(1.1)" }}
+        onError={() => setError(true)}
+      />
     </div>
   );
 };
@@ -151,20 +175,20 @@ export default function Page() {
     : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
-  /* ==== Referenzen – jetzt 9x MALOUM ==== */
+  /* ==== Referenzen – 9x MALOUM, echte Porträts (unscharf) ==== */
   const TESTIMONIALS = [
-    { name: "Hannah L.", role: "MALOUM",         text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
-    { name: "Mia K.",    role: "Fansly",         text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
-    { name: "Lea S.",    role: "MALOUM",         text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
-    { name: "Nora P.",   role: "MALOUM",         text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
-    { name: "Julia M.",  role: "MALOUM",         text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
-    { name: "Alina R.",  role: "Fansly",         text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
-    { name: "Emma T.",   role: "MALOUM",         text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
-    { name: "Sofia W.",  role: "MALOUM",         text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
-    { name: "Lara B.",   role: "MALOUM",         text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
-    { name: "Zoe F.",    role: "MALOUM",         text: "Check-ins halten mich accountable. Wachstum ist messbar." },
-    { name: "Paula D.",  role: "MALOUM",         text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
-    { name: "Kim A.",    role: "OnlyFans",       text: "PayPal-Fokus für DE-Fans war der Gamechanger." },
+    { name: "Hannah L.", role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Mia K.",    role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Lea S.",    role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Nora P.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Julia M.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Alina R.",  role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Emma T.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Sofia W.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Lara B.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Zoe F.",    role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Paula D.",  role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1541534401786-2077eed87a6f?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
+    { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2" },
   ];
 
   return (
@@ -242,7 +266,7 @@ export default function Page() {
                 Call buchen <ArrowRight className="size-5" />
               </a>
 
-              {/* Plattform Match jetzt rosa wie Call buchen */}
+              {/* Plattform Match rosa wie "Call buchen" */}
               <button
                 type="button"
                 onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
@@ -488,12 +512,12 @@ export default function Page() {
           {TESTIMONIALS.map((t, i) => (
             <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center gap-3">
-                <FaceBlur name={t.name} />
+                <AvatarReal name={t.name} src={t.img} />
                 <div>
                   <div className="font-semibold">{t.name}</div>
                   <div className="text-xs text-white/60">{t.role}</div>
                 </div>
-                <Stars count={5} />
+                <Stars rating={t.rating} />
               </div>
               <p className="mt-3 text-white/80 text-sm">“{t.text}”</p>
             </div>
