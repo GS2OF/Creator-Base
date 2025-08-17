@@ -211,9 +211,7 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 Call buchen <ArrowRight className="size-5" />
               </a>
-              <a href="#prozess" className="px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20">
-                Ablauf
-              </a>
+          
               {/* Neuer Button: Plattform Match (mit NEU-Badge) */}
               <button
                 type="button"
