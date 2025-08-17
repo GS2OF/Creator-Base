@@ -116,43 +116,7 @@ export default function Page() {
     return u;
   }
 
-  function computePlatformScores(f) {
-    const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
-    if (f.focus === "soft")     { s.MALOUM += 2; s.Fansly += 1; }
-    if (f.focus === "erotik")   { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 1; }
-    if (f.focus === "explicit") { s.OnlyFans += 3; s.ManyVids += 2; s.MALOUM += 1; }
-    if (f.anon) { s.MALOUM += 3; s.Fansly += 1; }
-    if (f.goal === "subs")     { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; }
-    if (f.goal === "ppv")      { s.OnlyFans += 3; s.MALOUM += 2; s.ManyVids += 1; }
-    if (f.goal === "discover") { s.MALOUM += 2; s.Fansly += 2; }
-    if (f.region === "dach")   { s.MALOUM += 2; }
-    if (f.region === "us")     { s.OnlyFans += 2; s.Fansly += 1; }
-    if (f.region === "global") { s.MALOUM += 1; s.OnlyFans += 1; s.Fansly += 1; }
-    if (f.live) { s.Fansly += 2; s.OnlyFans += 1; }
-    if (f.payout === "paypal") { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; s.Fanvue += 1; s.ManyVids += 1; }
-    if (f.payout === "fast")   { s.MALOUM += 1; s.OnlyFans += 1; s.Fanvue += 1; }
-    if (f.payout === "highcut"){ s.Fanvue += 1; s.ManyVids += 1; }
-    s.MALOUM += 0.2;
-    const arr = Object.entries(s).map(([name, score]) => ({ name, score }));
-    arr.sort((a, b) => b.score - a.score);
-    return arr;
-  }
-
-  function submitPlatformMatch(e) {
-    e?.preventDefault?.();
-    const inferred = inferFromIntro(pcForm.intro);
-    const merged = { ...pcForm, ...inferred };
-    setMatchContext(merged);
-    setMatchLoading(true);
-    setMatchStep(1);
-    setTimeout(() => {
-      const ranking = computePlatformScores(merged);
-      setMatchResult(ranking);
-      setMatchLoading(false);
-      setMatchStep(2);
-    }, 1200);
-  }
-
+  /* ====== Features & Profile (VOR Scoring – damit Scoring darauf zugreifen kann) ====== */
   const FEATURES = [
     { key:"anon",    label:"Anonymität möglich" },
     { key:"ppv",     label:"Stark für Abos & PPV" },
@@ -171,6 +135,95 @@ export default function Page() {
     ManyVids: { anon:false, ppv:true, live:false, fast:false, paypal:true,  privacy:true, de:false }
   };
 
+  /* ====== Faires Fit-Scoring 0–10 (statt „Score 7“) ====== */
+  function computePlatformScores(f) {
+    const PLATFORMS = ["MALOUM", "OnlyFans", "Fansly", "Fanvue", "ManyVids"];
+    const KEYS = ["anon", "ppv", "live", "fast", "paypal", "privacy", "de"];
+
+    const FOCUS_FIT = {
+      MALOUM:   { soft: 1.0,  erotik: 0.95, explicit: 0.7  },
+      OnlyFans: { soft: 0.8,  erotik: 1.0,  explicit: 1.0  },
+      Fansly:   { soft: 0.9,  erotik: 0.95, explicit: 0.9  },
+      Fanvue:   { soft: 0.8,  erotik: 0.9,  explicit: 0.75 },
+      ManyVids: { soft: 0.6,  erotik: 0.8,  explicit: 1.0  },
+    };
+
+    const GOAL_FIT = {
+      MALOUM:   { subs: 1.0,  ppv: 0.9,  discover: 0.9  },
+      OnlyFans: { subs: 0.95, ppv: 1.0,  discover: 0.85 },
+      Fansly:   { subs: 0.95, ppv: 0.95, discover: 0.9  },
+      Fanvue:   { subs: 0.85, ppv: 0.9,  discover: 0.8  },
+      ManyVids: { subs: 0.6,  ppv: 0.8,  discover: 0.6  },
+    };
+
+    const REGION_FIT = (platform, region) => {
+      if (region === "global") return 1;
+      if (region === "dach")   return PROFILE[platform]?.de ? 1 : 0.7;
+      if (region === "us") {
+        if (platform === "OnlyFans") return 1;
+        if (platform === "Fansly")   return 0.95;
+        return 0.8;
+      }
+      return 1;
+    };
+
+    const PAYOUT_FIT = (platform, payout) => {
+      if (payout === "paypal")  return PROFILE[platform]?.paypal ? 1 : 0;
+      if (payout === "fast")    return PROFILE[platform]?.fast ? 1 : 0.7;
+      if (payout === "highcut") return (platform === "Fanvue" || platform === "ManyVids") ? 0.95 : 0.75;
+      return 1;
+    };
+
+    const W_FEATURES = 0.6;
+    const W_PREFS    = 0.4;
+
+    const results = PLATFORMS.map((p) => {
+      // (A) Feature-Match (Ja=1, Teilweise=0.5, Nein=0)
+      const featHits = KEYS.reduce((sum, k) => {
+        const v = PROFILE[p]?.[k];
+        if (v === true)  return sum + 1;
+        if (v === false) return sum + 0;
+        return sum + 0.5;
+      }, 0);
+      const featureNorm = featHits / KEYS.length;
+
+      // (B) Präferenzen-Match (Mittel der aktiven Präferenz-Fits)
+      const prefVals = [
+        FOCUS_FIT[p][f.focus || "soft"],
+        GOAL_FIT[p][f.goal || "subs"],
+        REGION_FIT(p, f.region || "global"),
+        PAYOUT_FIT(p, f.payout || "paypal"),
+        ...(f.anon ? [PROFILE[p]?.anon ? 1 : 0] : []),
+        ...(f.live ? [PROFILE[p]?.live ? 1 : 0] : []),
+      ];
+      const prefNorm = prefVals.reduce((a, b) => a + b, 0) / prefVals.length;
+
+      let fit = 10 * (W_FEATURES * featureNorm + W_PREFS * prefNorm);
+      if (p === "MALOUM") fit += 0.2; // kleiner Tie-Breaker
+      fit = Math.max(0, Math.min(10, fit));
+
+      return { name: p, fit: Math.round(fit * 10) / 10 };
+    });
+
+    results.sort((a, b) => b.fit - a.fit);
+    return results;
+  }
+
+  function submitPlatformMatch(e) {
+    e?.preventDefault?.();
+    const inferred = inferFromIntro(pcForm.intro);
+    const merged = { ...pcForm, ...inferred };
+    setMatchContext(merged);
+    setMatchLoading(true);
+    setMatchStep(1);
+    setTimeout(() => {
+      const ranking = computePlatformScores(merged);
+      setMatchResult(ranking);
+      setMatchLoading(false);
+      setMatchStep(2);
+    }, 1200);
+  }
+
   const IconCell = ({v}) => v === true
     ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
     : v === false
@@ -187,7 +240,7 @@ export default function Page() {
   const TESTIMONIALS = [
     {
       name: "Hannah L.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
       text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur."
     },
     {
@@ -237,7 +290,7 @@ export default function Page() {
     },
     {
       name: "Paula D.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
+      img: "https://images.unsplash.com/photo-1529627047351-78f05439b1b0?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
       text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla."
     },
     {
@@ -692,178 +745,193 @@ export default function Page() {
                   <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
                 </div>
 
-                {/* STEP 1 (Form) */}
-                {matchStep === 1 && !matchLoading && (
-                  <form onSubmit={submitPlatformMatch} className="px-5 pb-5 grid gap-4">
-                    {/* KI-Intro */}
-                    <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                      <div className="text-xs text-white/60">KI-gestützt</div>
-                      <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
-                      <p className="text-white/70 text-sm mt-1">
-                        z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
-                      </p>
-                      <textarea
-                        value={pcForm.intro}
-                        onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
-                        rows={3}
-                        placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
-                        className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
+                {/* Scrollbarer Inhalt mit Extra-Bottom-Padding (für Sticky-Footer) */}
+                <div className="px-5 pb-24">
+                  {/* STEP 1 (Form) */}
+                  {matchStep === 1 && !matchLoading && (
+                    <form onSubmit={submitPlatformMatch} className="grid gap-4">
+                      {/* KI-Intro */}
+                      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-xs text-white/60">KI-gestützt</div>
+                        <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
+                        <p className="text-white/70 text-sm mt-1">
+                          z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
+                        </p>
+                        <textarea
+                          value={pcForm.intro}
+                          onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
+                          rows={3}
+                          placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
+                          className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
+                        />
+                        <p className="text-white/60 text-xs mt-2">
+                          Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
+                        </p>
+                      </div>
+
+                      {/* Kurze Auswahlfragen */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-white/80">Content-Fokus</label>
+                          <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="soft">Soft / Teasing</option>
+                            <option value="erotik">Erotik</option>
+                            <option value="explicit">Explizit</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">Anonym bleiben?</label>
+                          <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="no">Nein</option>
+                            <option value="yes">Ja</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">Primäres Ziel</label>
+                          <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="subs">Abos / Stammkundschaft</option>
+                            <option value="ppv">PPV & DMs</option>
+                            <option value="discover">Reichweite</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">Ziel-Region</label>
+                          <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="global">Global</option>
+                            <option value="dach">DACH</option>
+                            <option value="us">USA-lastig</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">Live-Streams wichtig?</label>
+                          <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="no">Nicht wichtig</option>
+                            <option value="yes">Wichtig</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
+                          <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="paypal">PayPal bevorzugt</option>
+                            <option value="fast">Schnelle Auszahlung</option>
+                            <option value="highcut">Hoher %-Anteil</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Hinweis: Buttons unten im Sticky-Footer */}
+                    </form>
+                  )}
+
+                  {/* KI-Ladezustand */}
+                  {matchStep === 1 && matchLoading && (
+                    <div className="py-14 flex flex-col items-center text-center gap-3">
+                      <div
+                        className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
+                        style={{ borderTopColor: ACCENT }}
+                        aria-label="KI denkt…"
                       />
-                      <p className="text-white/60 text-xs mt-2">
-                        Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
-                      </p>
+                      <div className="text-white/80 font-medium">Unsere KI denkt…</div>
+                      <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
                     </div>
+                  )}
 
-                    {/* Kurze Auswahlfragen */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm text-white/80">Content-Fokus</label>
-                        <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="soft">Soft / Teasing</option>
-                          <option value="erotik">Erotik</option>
-                          <option value="explicit">Explizit</option>
-                        </select>
+                  {/* STEP 2 – Ergebnis */}
+                  {matchStep === 2 && matchResult && (
+                    <div className="pb-2">
+                      <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
+                        Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
                       </div>
-                      <div>
-                        <label className="text-sm text-white/80">Anonym bleiben?</label>
-                        <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="no">Nein</option>
-                          <option value="yes">Ja</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/80">Primäres Ziel</label>
-                        <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="subs">Abos / Stammkundschaft</option>
-                          <option value="ppv">PPV & DMs</option>
-                          <option value="discover">Reichweite</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/80">Ziel-Region</label>
-                        <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="global">Global</option>
-                          <option value="dach">DACH</option>
-                          <option value="us">USA-lastig</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/80">Live-Streams wichtig?</label>
-                        <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="no">Nicht wichtig</option>
-                          <option value="yes">Wichtig</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
-                        <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
-                          className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
-                          <option value="paypal">PayPal bevorzugt</option>
-                          <option value="fast">Schnelle Auszahlung</option>
-                          <option value="highcut">Hoher %-Anteil</option>
-                        </select>
+
+                      {(() => {
+                        const top = matchResult.slice(0,3);
+                        const mal = matchResult.find(p => p.name === "MALOUM");
+                        const hasMal = top.some(p => p.name === "MALOUM");
+                        const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
+
+                        const card = (p) => (
+                          <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="text-xl font-semibold">{p.name}</div>
+                                <div className="text-white/70 text-sm">Fit {p.fit.toFixed(1)}/10</div>
+                              </div>
+                              {p.name === "MALOUM" && (
+                                <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
+                                  Unsere Empfehlung
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-3">
+                              <div className="text-white/70 text-sm mb-1">Features</div>
+                              <ul className="space-y-2">
+                                {FEATURES.map(f => {
+                                  const v = PROFILE[p.name]?.[f.key];
+                                  return (
+                                    <li key={f.key} className="flex items-center justify-between">
+                                      <span className="text-white/80">{f.label}</span>
+                                      <IconCell v={v} />
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          </div>
+                        );
+
+                        return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
+                      })()}
+
+                      <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
+                        <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
+                        <ul className="mt-3 space-y-2 text-white/90">
+                          {(() => {
+                            const r = [];
+                            if (!matchContext) return null;
+                            if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
+                            if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
+                            if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
+                            if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
+                            if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
+                            return r.map((t, i) => <li key={i}>• {t}</li>);
+                          })()}
+                        </ul>
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-2">
-                      <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Abbrechen</button>
-                      <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
-                        Auswerten <ChevronRight className="size-4" />
+                {/* Sticky Footer (Buttons immer sichtbar, Safe-Area für iOS) */}
+                <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+                  <div className="flex items-center justify-between gap-2">
+                    <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>
+                      Kostenloses Erstgespräch
+                    </a>
+                    <div className="flex items-center gap-2">
+                      {matchStep === 1 && !matchLoading && (
+                        <button type="button" onClick={submitPlatformMatch} className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
+                          Auswerten <ChevronRight className="size-4" />
+                        </button>
+                      )}
+                      {matchStep === 2 && (
+                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                          Zurück
+                        </button>
+                      )}
+                      <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                        Schließen
                       </button>
                     </div>
-                  </form>
-                )}
-
-                {/* KI-Ladezustand */}
-                {matchStep === 1 && matchLoading && (
-                  <div className="px-5 py-14 flex flex-col items-center text-center gap-3">
-                    <div
-                      className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
-                      style={{ borderTopColor: ACCENT }}
-                      aria-label="KI denkt…"
-                    />
-                    <div className="text-white/80 font-medium">Unsere KI denkt…</div>
-                    <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
                   </div>
-                )}
+                </div>
 
-                {/* STEP 2 – Ergebnis */}
-                {matchStep === 2 && matchResult && (
-                  <div className="px-5 pb-6">
-                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
-                      Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
-                    </div>
-
-                    {(() => {
-                      const top = matchResult.slice(0,3);
-                      const mal = matchResult.find(p => p.name === "MALOUM");
-                      const hasMal = top.some(p => p.name === "MALOUM");
-                      const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
-
-                      const card = (p) => (
-                        <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="text-xl font-semibold">{p.name}</div>
-                              <div className="text-white/70 text-sm">Score {p.score.toFixed(1)}</div>
-                            </div>
-                            {p.name === "MALOUM" && (
-                              <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
-                                Unsere Empfehlung
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-white/70 text-sm mb-1">Features</div>
-                            <ul className="space-y-2">
-                              {FEATURES.map(f => {
-                                const v = PROFILE[p.name]?.[f.key];
-                                return (
-                                  <li key={f.key} className="flex items-center justify-between">
-                                    <span className="text-white/80">{f.label}</span>
-                                    <IconCell v={v} />
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        </div>
-                      );
-
-                      return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
-                    })()}
-
-                    <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                      <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
-                      <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
-                      <ul className="mt-3 space-y-2 text-white/90">
-                        {(() => {
-                          const r = [];
-                          if (!matchContext) return null;
-                          if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
-                          if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
-                          if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
-                          if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
-                          if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
-                          return r.map((t, i) => <li key={i}>• {t}</li>);
-                        })()}
-                      </ul>
-
-                      <div className="mt-4 flex items-center justify-between">
-                        <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>Kostenloses Erstgespräch</a>
-                        <div className="flex items-center gap-2">
-                          <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">Zurück</button>
-                          <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">Schließen</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
