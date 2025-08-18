@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
@@ -8,6 +8,7 @@ import {
   Check, X, Minus, ChevronRight, XCircle
 } from "lucide-react";
 
+/* ====== Design ====== */
 const ACCENT = "#f464b0";
 const ACCENT_RGB = "244, 100, 176";
 
@@ -75,15 +76,107 @@ const AvatarReal = ({ name, src, blur = 6 }) => {
   );
 };
 
+/* ====== Scoring (normalisiert, ohne Live) ====== */
+
+/** Kriterien & Default-Gewichte (0–5 je Kriterium) */
+const CRITERIA_DEFAULT = {
+  anon: 3,
+  ppv: 3,
+  paypal: 3,
+  fast: 2,
+  privacy: 2,
+  de: 2,
+  focus_fit: 2,
+  region_fit: 2,
+};
+
+/** Plattform-Feature-Matrix: 1 = Ja, 0.5 = Teilweise, 0 = Nein */
+const PLATFORM_FEATURES = {
+  MALOUM:   { anon:1, ppv:1, paypal:1, fast:1, privacy:1, de:1 },
+  OnlyFans: { anon:0, ppv:1, paypal:1, fast:1, privacy:1, de:0 },
+  Fansly:   { anon:1, ppv:1, paypal:1, fast:1, privacy:1, de:0 },
+  Fanvue:   { anon:0, ppv:1, paypal:1, fast:1, privacy:1, de:0 },
+  ManyVids: { anon:0, ppv:1, paypal:1, fast:0, privacy:1, de:0 },
+};
+
+/** Harte Must-haves prüfen (verlangen „Ja“) */
+function violatesMustHaves(p, musts) {
+  return musts.some((k) => (PLATFORM_FEATURES[p]?.[k] || 0) < 1);
+}
+
+/** Ergebnis-Gründe erzeugen (kurz & verständlich) */
+function explainPlatform(p, form) {
+  const f = PLATFORM_FEATURES[p] || {};
+  const r = [];
+  if (form.anon)  r.push(f.anon===1 ? "+ Anonym möglich" : f.anon===0.5 ? "± Teilweise anonym" : "− Keine Anonymität");
+  if (form.payout === "paypal") r.push(f.paypal===1 ? "+ PayPal verfügbar" : "− Kein PayPal");
+  if (form.goal === "ppv" || form.goal === "subs") r.push(f.ppv ? "+ Stark für Abos/PPV" : "− Schwach für Abos/PPV");
+  if (form.region === "dach")  r.push(f.de ? "+ DE-Support/DSGVO" : "− Wenig DE-Support");
+  if (f.fast===1) r.push("+ Schnelle Auszahlung");
+  if (f.privacy===1) r.push("+ Datenschutz/Privatsphäre");
+  return r.slice(0,4);
+}
+
+/** Normalisiertes Scoring 0–100 mit Gewichten & Focus/Region-Fit */
+function computePlatformScores(form, weightOverride = {}, mustHaves = []) {
+  const W = { ...CRITERIA_DEFAULT, ...weightOverride };
+  const platforms = Object.keys(PLATFORM_FEATURES);
+  const results = [];
+
+  for (const p of platforms) {
+    if (violatesMustHaves(p, mustHaves)) continue;
+
+    // Base-Features
+    let score = 0;
+    score += (PLATFORM_FEATURES[p].anon   || 0) * W.anon;
+    score += (PLATFORM_FEATURES[p].ppv    || 0) * W.ppv;
+    score += (PLATFORM_FEATURES[p].paypal || 0) * W.paypal;
+    score += (PLATFORM_FEATURES[p].fast   || 0) * W.fast;
+    score += (PLATFORM_FEATURES[p].privacy|| 0) * W.privacy;
+    score += (PLATFORM_FEATURES[p].de     || 0) * W.de;
+
+    // Focus-Fit (weich)
+    const focusFit =
+      form.focus === "soft"     ? (p === "MALOUM" ? 1 : p === "Fansly" ? 0.6 : 0.3) :
+      form.focus === "erotik"   ? (p === "OnlyFans" || p === "MALOUM" ? 1 : 0.6) :
+      /* explicit */              (p === "OnlyFans" ? 1 : p === "ManyVids" ? 0.8 : 0.3);
+
+    score += W.focus_fit * focusFit;
+
+    // Regions-Fit
+    const regionFit =
+      form.region === "dach"   ? (p === "MALOUM" ? 1 : 0.4) :
+      form.region === "us"     ? (p === "OnlyFans" ? 1 : 0.6) :
+      /* global */               0.7;
+
+    score += W.region_fit * regionFit;
+
+    results.push({ name: p, raw: score, reasons: explainPlatform(p, form) });
+  }
+
+  const maxPossible =
+    W.anon + W.ppv + W.paypal + W.fast + W.privacy + W.de +
+    W.focus_fit + W.region_fit;
+
+  const normalized = results.map(r => ({
+    ...r,
+    match: Math.round((r.raw / maxPossible) * 100)
+  }));
+
+  normalized.sort((a,b)=> b.match - a.match || (a.name==="MALOUM"?-1:0));
+  return normalized;
+}
+
+/* ====== Page ====== */
 export default function Page() {
   const reduce = useReducedMotion();
 
-  /* ==== Plattform Match – State & Logik ==== */
+  /* Plattform Match – State */
   const [matchOpen, setMatchOpen] = useState(false);
   const [matchStep, setMatchStep] = useState(1);   // 1=Fragen, 2=Ergebnis
-  const [matchLoading, setMatchLoading] = useState(false); // KI denkt…
+  const [matchLoading, setMatchLoading] = useState(false);
   const [matchResult, setMatchResult] = useState(null);
-  const [matchContext, setMatchContext] = useState(null); // für Begründungen
+  const [matchContext, setMatchContext] = useState(null);
 
   // Body-Scroll locken, wenn Modal offen (Mobile-Fix)
   useEffect(() => {
@@ -94,117 +187,35 @@ export default function Page() {
   }, [matchOpen]);
 
   const [pcForm, setPcForm] = useState({
-    focus: "soft",
-    anon: false,
-    goal: "subs",
-    region: "global",
-    live: false,
-    payout: "paypal",
-    intro: ""
+    focus: "soft",      // soft | erotik | explicit
+    anon: false,        // boolean
+    goal: "subs",       // subs | ppv | discover
+    region: "global",   // global | dach | us
+    payout: "paypal",   // paypal | fast | highcut
+    intro: ""           // Freitext
   });
 
+  // Gewichtungen & Must-haves
+  const [weights, setWeights] = useState({});
+  const [musts, setMusts] = useState([]); // ["paypal","de","privacy","anon"]
+
+  // Labels
+  const progressLabel = matchLoading
+    ? "KI analysiert deine Angaben…"
+    : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
+  const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
+
+  // Intro-Parser (leicht)
   function inferFromIntro(text) {
     const t = (text || "").toLowerCase();
     const u = {};
     if (/anonym|ohne gesicht|diskret/.test(t)) u.anon = true;
     if (/abo|subscription|subs/.test(t)) u.goal = "subs";
     if (/(ppv|dm|direct|nachricht|pay per view|upsell)/.test(t)) u.goal = "ppv";
-    if (/live/.test(t)) u.live = true;
     if (/\bde\b|deutsch|german|dach/.test(t)) u.region = "dach";
     if (/\bus\b|usa/.test(t)) u.region = "us";
     if (/paypal/.test(t)) u.payout = "paypal";
     return u;
-  }
-
-  /* ====== Features & Profile ====== */
-  const FEATURES = [
-    { key:"anon",    label:"Anonymität möglich" },
-    { key:"ppv",     label:"Stark für Abos & PPV" },
-    { key:"live",    label:"Live-Streams" },
-    { key:"fast",    label:"Schnelle Auszahlung" },
-    { key:"paypal",  label:"PayPal verfügbar" },
-    { key:"privacy", label:"DSGVO/Privatsphäre" },
-    { key:"de",      label:"DE-Support" }
-  ];
-
-  const PROFILE = {
-    MALOUM:   { anon:true,  ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:true  },
-    OnlyFans: { anon:false, ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
-    Fansly:   { anon:true,  ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
-    Fanvue:   { anon:false, ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:false },
-    ManyVids: { anon:false, ppv:true, live:false, fast:false, paypal:true,  privacy:true, de:false }
-  };
-
-  /* ====== Faires Fit-Scoring 0–10 ====== */
-  function computePlatformScores(f) {
-    const PLATFORMS = ["MALOUM", "OnlyFans", "Fansly", "Fanvue", "ManyVids"];
-    const KEYS = ["anon", "ppv", "live", "fast", "paypal", "privacy", "de"];
-
-    const FOCUS_FIT = {
-      MALOUM:   { soft: 1.0,  erotik: 0.95, explicit: 0.7  },
-      OnlyFans: { soft: 0.8,  erotik: 1.0,  explicit: 1.0  },
-      Fansly:   { soft: 0.9,  erotik: 0.95, explicit: 0.9  },
-      Fanvue:   { soft: 0.8,  erotik: 0.9,  explicit: 0.75 },
-      ManyVids: { soft: 0.6,  erotik: 0.8,  explicit: 1.0  },
-    };
-
-    const GOAL_FIT = {
-      MALOUM:   { subs: 1.0,  ppv: 0.9,  discover: 0.9  },
-      OnlyFans: { subs: 0.95, ppv: 1.0,  discover: 0.85 },
-      Fansly:   { subs: 0.95, ppv: 0.95, discover: 0.9  },
-      Fanvue:   { subs: 0.85, ppv: 0.9,  discover: 0.8  },
-      ManyVids: { subs: 0.6,  ppv: 0.8,  discover: 0.6  },
-    };
-
-    const REGION_FIT = (platform, region) => {
-      if (region === "global") return 1;
-      if (region === "dach")   return PROFILE[platform]?.de ? 1 : 0.7;
-      if (region === "us") {
-        if (platform === "OnlyFans") return 1;
-        if (platform === "Fansly")   return 0.95;
-        return 0.8;
-      }
-      return 1;
-    };
-
-    const PAYOUT_FIT = (platform, payout) => {
-      if (payout === "paypal")  return PROFILE[platform]?.paypal ? 1 : 0;
-      if (payout === "fast")    return PROFILE[platform]?.fast ? 1 : 0.7;
-      if (payout === "highcut") return (platform === "Fanvue" || platform === "ManyVids") ? 0.95 : 0.75;
-      return 1;
-    };
-
-    const W_FEATURES = 0.6;
-    const W_PREFS    = 0.4;
-
-    const results = PLATFORMS.map((p) => {
-      const featHits = KEYS.reduce((sum, k) => {
-        const v = PROFILE[p]?.[k];
-        if (v === true)  return sum + 1;
-        if (v === false) return sum + 0;
-        return sum + 0.5;
-      }, 0);
-      const featureNorm = featHits / KEYS.length;
-
-      const prefVals = [
-        FOCUS_FIT[p][f.focus || "soft"],
-        GOAL_FIT[p][f.goal || "subs"],
-        REGION_FIT(p, f.region || "global"),
-        PAYOUT_FIT(p, f.payout || "paypal"),
-        ...(f.anon ? [PROFILE[p]?.anon ? 1 : 0] : []),
-        ...(f.live ? [PROFILE[p]?.live ? 1 : 0] : []),
-      ];
-      const prefNorm = prefVals.reduce((a, b) => a + b, 0) / prefVals.length;
-
-      let fit = 10 * (W_FEATURES * featureNorm + W_PREFS * prefNorm);
-      if (p === "MALOUM") fit += 0.2; // kleiner Tie-Breaker
-      fit = Math.max(0, Math.min(10, fit));
-
-      return { name: p, fit: Math.round(fit * 10) / 10 };
-    });
-
-    results.sort((a, b) => b.fit - a.fit);
-    return results;
   }
 
   function submitPlatformMatch(e) {
@@ -215,12 +226,30 @@ export default function Page() {
     setMatchLoading(true);
     setMatchStep(1);
     setTimeout(() => {
-      const ranking = computePlatformScores(merged);
+      const ranking = computePlatformScores(merged, weights, musts);
       setMatchResult(ranking);
       setMatchLoading(false);
       setMatchStep(2);
-    }, 1200);
+    }, 900);
   }
+
+  /* Vergleichs-Tabellenanzeige (Features) */
+  const FEATURES = [
+    { key:"anon",    label:"Anonymität möglich" },
+    { key:"ppv",     label:"Stark für Abos & PPV" },
+    { key:"fast",    label:"Schnelle Auszahlung" },
+    { key:"paypal",  label:"PayPal verfügbar" },
+    { key:"privacy", label:"DSGVO/Privatsphäre" },
+    { key:"de",      label:"DE-Support" }
+  ];
+
+  const PROFILE = {
+    MALOUM:   { anon:true,  ppv:true, fast:true,  paypal:true,  privacy:true, de:true  },
+    OnlyFans: { anon:false, ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    Fansly:   { anon:true,  ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    Fanvue:   { anon:false, ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    ManyVids: { anon:false, ppv:true, fast:false, paypal:true,  privacy:true, de:false }
+  };
 
   const IconCell = ({v}) => v === true
     ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
@@ -228,74 +257,20 @@ export default function Page() {
       ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
       : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
 
-  // Progress UI
-  const progressLabel = matchLoading
-    ? "KI analysiert deine Angaben…"
-    : (matchStep === 1 ? "Schritt 1/2: Prioritäten & Fragen" : "Schritt 2/2: Ergebnis & Vergleich");
-  const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
-
   /* ==== Referenzen – 9x MALOUM, echte Porträts (unscharf) + Texte ==== */
   const TESTIMONIALS = [
-    {
-      name: "Hannah L.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur."
-    },
-    {
-      name: "Mia K.", role: "Fansly", rating: 4,
-      img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze."
-    },
-    {
-      name: "Lea S.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow."
-    },
-    {
-      name: "Nora P.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert."
-    },
-    {
-      name: "Julia M.", role: "MALOUM", rating: 4,
-      img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt."
-    },
-    {
-      name: "Alina R.", role: "Fansly", rating: 4,
-      img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor."
-    },
-    {
-      name: "Emma T.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan."
-    },
-    {
-      name: "Sofia W.", role: "MALOUM", rating: 4,
-      img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag."
-    },
-    {
-      name: "Lara B.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall."
-    },
-    {
-      name: "Zoe F.", role: "MALOUM", rating: 4,
-      img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Check-ins halten mich accountable. Wachstum ist messbar."
-    },
-    {
-      name: "Paula D.", role: "MALOUM", rating: 5,
-      img: "https://images.unsplash.com/photo-1529627047351-78f05439b1b0?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla."
-    },
-    {
-      name: "Kim A.", role: "OnlyFans", rating: 4,
-      img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2",
-      text: "PayPal-Fokus für DE-Fans war der Gamechanger."
-    },
+    { name: "Hannah L.", role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
+    { name: "Mia K.",    role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
+    { name: "Lea S.",    role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
+    { name: "Nora P.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
+    { name: "Julia M.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
+    { name: "Alina R.",  role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
+    { name: "Emma T.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
+    { name: "Sofia W.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
+    { name: "Lara B.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
+    { name: "Zoe F.",    role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Check-ins halten mich accountable. Wachstum ist messbar." },
+    { name: "Paula D.",  role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
+    { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "PayPal-Fokus für DE-Fans war der Gamechanger." },
   ];
 
   return (
@@ -339,17 +314,16 @@ export default function Page() {
         <div className="grid md:grid-cols-2 gap-10 items-start">
           {/* Left */}
           <motion.div
-            initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+            initial={{ opacity: 0, y: useReducedMotion ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: reduce ? 0.001 : 0.5 }}
+            transition={{ duration: useReducedMotion ? 0.001 : 0.5 }}
           >
             <Pill>
               <Sparkles className="size-4" />
               <span>Die Adult-Agentur für nachhaltiges Creator-Wachstum</span>
             </Pill>
 
-            {/* Claim */}
             <div className="mt-4">
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.08] tracking-tight">
                 Wir bieten{" "}
@@ -361,7 +335,6 @@ export default function Page() {
                 </span>{" "}
                 für deinen Content.
               </h1>
-
               <p className="mt-4 text-white/80 text-base md:text-lg max-w-prose">
                 Mehr Subs, PPV & Tipps – mit Strategie, 1:1-Betreuung und fairen Splits. Du behältst die Kontrolle.
               </p>
@@ -372,7 +345,6 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 Call buchen <ArrowRight className="size-5" />
               </a>
-
               {/* Plattform Match – dezent (kein Pink) */}
               <button
                 type="button"
@@ -402,10 +374,10 @@ export default function Page() {
 
           {/* Right: dashboard card */}
           <motion.div
-            initial={{ opacity: 0, y: reduce ? 0 : 10 }}
+            initial={{ opacity: 0, y: useReducedMotion ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: reduce ? 0.001 : 0.55, delay: reduce ? 0 : 0.05 }}
+            transition={{ duration: useReducedMotion ? 0.001 : 0.55, delay: useReducedMotion ? 0 : 0.05 }}
             className="relative md:mt-10 lg:mt-16 xl:mt-20"
           >
             <div className="rounded-xl bg-[#0f0f14] border border-white/10 overflow-hidden shadow-lg" role="img" aria-label="Creator Dashboard — 90 Tage">
@@ -715,44 +687,46 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* ==== Plattform Match Modal (2 Steps + KI-Loader) ==== */}
+      {/* ==== Plattform Match Modal (Gewichte + Must-haves, Mobile sticky Footer) ==== */}
       {matchOpen && (
         <div className="fixed inset-0 z-[70]">
           {/* Overlay */}
           <div className="absolute inset-0 bg-black/60" onClick={() => setMatchOpen(false)} />
+
           {/* Scroll-Container (Mobile fix) */}
           <div className="relative z-10 h-full overflow-y-auto">
             <div className="min-h-full flex items-start md:items-center justify-center p-4">
-              <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[880px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
+              <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[880px] max-h-[calc(100dvh-2rem)] flex flex-col">
                 {/* Header */}
-                <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+                <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-white/60">Creator-Base</div>
                     <div className="text-lg font-semibold">Plattform Match</div>
                   </div>
-                  <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1 text-sm">
+                  <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
                     <XCircle className="size-5" /> Schließen
                   </button>
                 </div>
 
-                {/* Progress */}
-                <div className="px-5 py-2">
-                  <div className="h-1 w-full bg-white/10 rounded">
-                    <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
+                {/* Content scrollable */}
+                <div className="overflow-y-auto">
+                  {/* Progress */}
+                  <div className="px-5 py-2">
+                    <div className="h-1 w-full bg-white/10 rounded">
+                      <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
+                    </div>
+                    <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
                   </div>
-                  <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
-                </div>
 
-                {/* Scrollbarer Inhalt mit Extra-Bottom-Padding (Platz für Sticky-Footer) */}
-                <div className="px-5 pb-20">
                   {/* STEP 1 (Form) */}
                   {matchStep === 1 && !matchLoading && (
-                    <form id="platform-match-form" onSubmit={submitPlatformMatch} className="grid gap-4">
+                    <form onSubmit={submitPlatformMatch} className="px-5 pb-24 grid gap-4">
+                      {/* KI-Intro */}
                       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                         <div className="text-xs text-white/60">KI-gestützt</div>
                         <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
                         <p className="text-white/70 text-sm mt-1">
-                          z. B.: „Ich will anonym bleiben, 3–4k/Monat verdienen, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
+                          z. B.: „Ich will anonym bleiben, 3–4k/Monat, Fokus auf Abos & PayPal, DACH-Zielgruppe.“
                         </p>
                         <textarea
                           value={pcForm.intro}
@@ -761,17 +735,14 @@ export default function Page() {
                           placeholder="Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)"
                           className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
                         />
-                        <p className="text-white/60 text-xs mt-2">
-                          Unsere KI liefert dir gleich <span className="font-semibold">3 Empfehlungen</span> – passend zu deinen Zielen.
-                        </p>
                       </div>
 
-                      {/* Kurze Auswahlfragen */}
+                      {/* Kurze Auswahlfragen (ohne Live) */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm text-white/80">Content-Fokus</label>
                           <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="soft">Soft / Teasing</option>
                             <option value="erotik">Erotik</option>
                             <option value="explicit">Explizit</option>
@@ -780,7 +751,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Anonym bleiben?</label>
                           <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="no">Nein</option>
                             <option value="yes">Ja</option>
                           </select>
@@ -788,7 +759,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Primäres Ziel</label>
                           <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="subs">Abos / Stammkundschaft</option>
                             <option value="ppv">PPV & DMs</option>
                             <option value="discover">Reichweite</option>
@@ -797,28 +768,78 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Ziel-Region</label>
                           <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="global">Global</option>
                             <option value="dach">DACH</option>
                             <option value="us">USA-lastig</option>
                           </select>
                         </div>
                         <div>
-                          <label className="text-sm text-white/80">Live-Streams wichtig?</label>
-                          <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
-                            <option value="no">Nicht wichtig</option>
-                            <option value="yes">Wichtig</option>
-                          </select>
-                        </div>
-                        <div>
                           <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
                           <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="paypal">PayPal bevorzugt</option>
                             <option value="fast">Schnelle Auszahlung</option>
                             <option value="highcut">Hoher %-Anteil</option>
                           </select>
+                        </div>
+                      </div>
+
+                      {/* Must-haves */}
+                      <div>
+                        <div className="text-sm text-white/80 mb-2">Must-haves (hart, optional)</div>
+                        {[
+                          {k:"paypal", label:"PayPal"},
+                          {k:"de", label:"DE-Support"},
+                          {k:"privacy", label:"DSGVO"},
+                          {k:"anon", label:"Anonymität"},
+                        ].map(({k,label}) => (
+                          <button
+                            type="button"
+                            key={k}
+                            onClick={()=> setMusts(m => m.includes(k) ? m.filter(x=>x!==k) : [...m,k])}
+                            className={`mr-2 mb-2 px-2 py-1 rounded text-xs border ${
+                              musts.includes(k) ? "bg-emerald-500/20 border-emerald-400" : "bg-white/10 border-white/20"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Gewichtungen */}
+                      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-sm font-semibold mb-3">Gewichtungen (0–5)</div>
+                        {[
+                          {k:"paypal", label:"PayPal-Wichtigkeit"},
+                          {k:"anon", label:"Anonymität"},
+                          {k:"ppv", label:"Abos/PPV"},
+                          {k:"fast", label:"Schnelle Auszahlung"},
+                          {k:"privacy", label:"Datenschutz/DSGVO"},
+                          {k:"de", label:"DE-Support"},
+                          {k:"focus_fit", label:"Fokus-Fit"},
+                          {k:"region_fit", label:"Region-Fit"},
+                        ].map(({k,label}) => (
+                          <div key={k} className="grid grid-cols-[140px_1fr_38px] items-center gap-3 py-1">
+                            <label className="text-xs text-white/75">{label}</label>
+                            <input
+                              type="range" min={0} max={5} step={1}
+                              value={weights[k] ?? CRITERIA_DEFAULT[k]}
+                              onChange={(e)=>setWeights(w=>({...w, [k]: Number(e.target.value)}))}
+                            />
+                            <span className="text-xs text-white/60 tabular-nums w-8 text-right">
+                              {weights[k] ?? CRITERIA_DEFAULT[k]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Sticky Footer: nur Auswerten */}
+                      <div className="sticky bottom-0 -mx-5 px-5 py-3 border-t border-white/10 bg-[#0f0f14]/95 backdrop-blur">
+                        <div className="flex items-center justify-end">
+                          <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
+                            Auswerten <ChevronRight className="size-4" />
+                          </button>
                         </div>
                       </div>
                     </form>
@@ -826,7 +847,7 @@ export default function Page() {
 
                   {/* KI-Ladezustand */}
                   {matchStep === 1 && matchLoading && (
-                    <div className="py-14 flex flex-col items-center text-center gap-3">
+                    <div className="px-5 py-16 flex flex-col items-center text-center gap-3">
                       <div
                         className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
                         style={{ borderTopColor: ACCENT }}
@@ -839,23 +860,19 @@ export default function Page() {
 
                   {/* STEP 2 – Ergebnis */}
                   {matchStep === 2 && matchResult && (
-                    <div className="pb-2">
+                    <div className="px-5 pb-24">
                       <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
                         Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
                       </div>
 
-                      {(() => {
-                        const top = matchResult.slice(0,3);
-                        const mal = matchResult.find(p => p.name === "MALOUM");
-                        const hasMal = top.some(p => p.name === "MALOUM");
-                        const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
-
-                        const card = (p) => (
+                      {/* Top 3 */}
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        {matchResult.slice(0,3).map((p) => (
                           <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
                             <div className="flex items-start justify-between">
                               <div>
                                 <div className="text-xl font-semibold">{p.name}</div>
-                                <div className="text-white/70 text-sm">Fit {p.fit.toFixed(1)}/10</div>
+                                <div className="text-white/70 text-sm">Match {p.match}%</div>
                               </div>
                               {p.name === "MALOUM" && (
                                 <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
@@ -863,6 +880,7 @@ export default function Page() {
                                 </span>
                               )}
                             </div>
+
                             <div className="mt-3">
                               <div className="text-white/70 text-sm mb-1">Features</div>
                               <ul className="space-y-2">
@@ -877,14 +895,20 @@ export default function Page() {
                                 })}
                               </ul>
                             </div>
+
+                            {/* Gründe kurz */}
+                            {p.reasons?.length > 0 && (
+                              <div className="mt-3 text-xs text-white/70">
+                                {p.reasons.slice(0,3).map((r,i)=> <div key={i}>• {r}</div>)}
+                              </div>
+                            )}
                           </div>
-                        );
+                        ))}
+                      </div>
 
-                        return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
-                      })()}
-
+                      {/* Erklärung MALOUM */}
                       <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div className="text-lg font-semibold">Warum MALOUM die richtige Empfehlung ist</div>
+                        <div className="text-lg font-semibold">Warum MALOUM gut passt</div>
                         <div className="text-white/70 text-sm">Basierend auf deinen Prioritäten:</div>
                         <ul className="mt-3 space-y-2 text-white/90">
                           {(() => {
@@ -892,44 +916,37 @@ export default function Page() {
                             if (!matchContext) return null;
                             if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
                             if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
-                            if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
-                            if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
+                            if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal & DE-Support – schnell & unkompliziert.");
+                            if (matchContext.region === "dach") r.push("DSGVO-orientierte Prozesse & deutschsprachiger Support.");
                             if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
                             return r.map((t, i) => <li key={i}>• {t}</li>);
                           })()}
                         </ul>
                       </div>
+
+                      {/* Sticky Footer Ergebnis: Zurück / Neu starten */}
+                      <div className="sticky bottom-0 -mx-5 px-5 py-3 border-t border-white/10 bg-[#0f0f14]/95 backdrop-blur">
+                        <div className="flex items-center justify-between gap-2">
+                          <button
+                            onClick={()=>{ setMatchStep(1); setMatchLoading(false); }}
+                            className="px-4 py-2 rounded bg-white/10 border border-white/20"
+                          >
+                            Zurück
+                          </button>
+                          <button
+                            onClick={()=>{ setMatchStep(1); setMatchResult(null); setMatchContext(null); }}
+                            className="px-4 py-2 rounded"
+                            style={{ background: ACCENT }}
+                          >
+                            Neue Analyse
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
-
-                {/* Sticky Footer – nur nötige Buttons, mobil-freundlich */}
-                {!matchLoading && (
-                  <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-4 py-2 pb-[max(10px,env(safe-area-inset-bottom))]">
-                    <div className="flex items-center justify-end gap-2">
-                      {matchStep === 1 && (
-                        <button
-                          type="submit"
-                          form="platform-match-form"
-                          className="w-full sm:w-auto px-4 py-2 rounded text-sm"
-                          style={{ background: ACCENT }}
-                        >
-                          Auswerten <ChevronRight className="inline-block size-4 ml-1" />
-                        </button>
-                      )}
-                      {matchStep === 2 && (
-                        <button
-                          onClick={()=>{ setMatchStep(1); setMatchLoading(false); }}
-                          className="w-full sm:w-auto px-4 py-2 rounded text-sm bg-white/10 border border-white/20"
-                        >
-                          Zurück
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-
               </div>
+
             </div>
           </div>
         </div>
