@@ -1,20 +1,22 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
   Target, Rocket, Handshake, Users, ShieldCheck, LineChart, EyeOff,
-  Check, X, Minus, ChevronRight, XCircle, Copy
+  Check, X, Minus, ChevronRight, XCircle
 } from "lucide-react";
 
-/* ==== Theme ==== */
+/* === Branding === */
 const ACCENT = "#f464b0";
 const ACCENT_RGB = "244, 100, 176";
 
-/* ==== Layout Helpers ==== */
+/* === Helpers === */
 const Section = ({ id, className = "", children }) => (
-  <section id={id} className={`w-full max-w-7xl mx-auto px-4 md:px-6 ${className}`}>{children}</section>
+  <section id={id} className={`w-full max-w-7xl mx-auto px-4 md:px-6 ${className}`}>
+    {children}
+  </section>
 );
 
 const Pill = ({ children }) => (
@@ -23,7 +25,7 @@ const Pill = ({ children }) => (
   </span>
 );
 
-/* ==== Stars (4/5 & 5/5) ==== */
+/* ★ Bewertungssterne (4/5 oder 5/5) */
 const Stars = ({ rating = 5 }) => {
   const full = Math.max(0, Math.min(5, Math.round(rating)));
   const empty = 5 - full;
@@ -39,7 +41,7 @@ const Stars = ({ rating = 5 }) => {
   );
 };
 
-/* ==== Avatar: realistisch + blur, Fallback Silhouette ==== */
+/* Fallback-Avatar (Silhouette) */
 const FaceBlur = ({ name = "Model" }) => {
   let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
   const hair = `hsl(${h}, 60%, 28%)`;
@@ -57,6 +59,7 @@ const FaceBlur = ({ name = "Model" }) => {
   );
 };
 
+/* Realistisch unscharfer Avatar aus Unsplash (mit Fallback) */
 const AvatarReal = ({ name, src, blur = 6 }) => {
   const [error, setError] = useState(false);
   if (!src || error) return <FaceBlur name={name} />;
@@ -74,390 +77,328 @@ const AvatarReal = ({ name, src, blur = 6 }) => {
   );
 };
 
-/* =========================================================================================
-   Platform Match v2 – Sliders, Advanced, Fair Scoring, DE/EN, Deep-Link
-   ========================================================================================= */
-
-/* i18n strings */
+/* === I18N (Nav + Plattform Match) === */
 const I18N = {
   de: {
-    title: "Plattform Match",
-    stepLabel1: "Schritt 1/2: Prioritäten",
-    stepLabel2: "Schritt 2/2: Ergebnis",
-    thinking: "KI analysiert deine Angaben…",
-    copyLink: "Link kopieren",
-    evaluate: "Auswerten",
-    back: "Zurück",
-    close: "Schließen",
-    hintPaypal: "Viele DACH-Fans zahlen gern per PayPal.",
-    sliders: {
-      anon: { label: "Anonymität", left: "Pseudonym & Blur", right: "Gesicht ok", hint: "Wie wichtig ist Anonymität?" },
-      paypal: { label: "Friktionsarme Zahlungen (PayPal)", left: "Sehr wichtig", right: "Egal", hint: "Weniger Hürden = mehr Käufe." },
-      dach: { label: "DACH-Fokus / DE-Support", left: "Wichtig", right: "Global/US ok", hint: "Deutsch & DSGVO gewünscht?" },
-      monetize: { label: "Monetarisierung vs. Reichweite", left: "Subs/PPV jetzt", right: "Erst Discovery", hint: "Schnelle Umsätze oder Reichweite?" },
-      policy: { label: "Policy-Risiko", left: "Strikt/low risk", right: "Mehr Freiheit ok", hint: "Wie restriktiv soll es sein?" },
-      ux: { label: "Bedienbarkeit & Support", left: "Einfach + Support", right: "Pro-Features (Self)", hint: "Wie wichtig ist Einfachheit?" }
-    },
-    advTitle: "Erweiterte Optionen",
-    adv: {
-      payout: { label: "Payout-Speed", left: "Wichtig", right: "Egal" },
-      dm: { label: "DM-Automation", left: "Sehr wichtig", right: "Unwichtig" },
-      paywall: { label: "Paywall-Flex", left: "Bundles/Trials", right: "Standard reicht" },
-      links: { label: "Externe Links / Funnel", left: "Wichtig", right: "Egal" },
-      chargeback: { label: "Chargeback-Schutz", left: "Sehr wichtig", right: "Egal" },
-      analytics: { label: "Analytics-Tiefe", left: "Deep/Cohorts", right: "Basic ok" },
-      kyc: { label: "KYC-Hürde", left: "Niedrig", right: "Egal" },
-      live: { label: "Live-Streaming", left: "Wichtig", right: "Unwichtig" }
-    },
-    results: {
-      top3: "Top-Empfehlungen",
-      whyFit: "Warum passt diese Plattform zu dir?",
-      headsUp: "Hinweis",
-      headsUpText: "Viele deutsche Fans bevorzugen PayPal – einfache, diskrete Zahlung.",
-      chips: {
-        dachPayPal: "DACH/PayPal Fit",
-        anon: "Anonym möglich",
-        subsPpv: "Abo/PPV stark",
-        lowRisk: "Niedr. Policy-Risiko",
-        easyStart: "Einfacher Start",
-        dmAuto: "DM-Automationen",
-        fastPayouts: "Schnelle Auszahlungen",
-        analytics: "Analytics pro",
-        funnel: "Funnel-freundlich",
-        paywall: "Paywall-Flex"
-      }
-    },
-    platformBadge: "Unsere Empfehlung"
+    nav: { vorteile: "Vorteile", leistungen: "Leistungen", prozess: "Ablauf", referenzen: "Referenzen", vergleich: "Vergleich", kontakt: "Kontakt" },
+    heroCta: "Kostenloses Erstgespräch",
+    pm: {
+      title: "Plattform Match",
+      aiThinks: "Unsere KI denkt…",
+      analyzing: "Analysiert deine Prioritäten und erstellt das Ranking.",
+      step1: "Schritt 1/2: Prioritäten & Fragen",
+      step2: "Schritt 2/2: Ergebnis & Vergleich",
+      introTitle: "Schreib uns kurz, was dir wichtig ist",
+      introHint: "z. B.: „Ich will anonym bleiben, 3–4k/Monat, Fokus Abos & PayPal, DACH-Zielgruppe.“",
+      textareaPH: "Deine Prioritäten (Anonymität, Zielumsatz, Plattform-Vorlieben, Region …)",
+      q: {
+        focus: "Content-Fokus",
+        focusSoft: "Soft / Teasing",
+        focusErotik: "Erotik",
+        focusExplicit: "Explizit",
+        anon: "Anonym bleiben?",
+        anonNo: "Nein",
+        anonYes: "Ja",
+        goal: "Primäres Ziel",
+        goalSubs: "Abos / Stammkundschaft",
+        goalPpv: "PPV & DMs",
+        goalDiscover: "Reichweite",
+        region: "Ziel-Region",
+        regGlobal: "Global",
+        regDach: "DACH",
+        regUs: "USA-lastig",
+        payout: "Zahlungs-Präferenz",
+        payPaypal: "PayPal bevorzugt",
+        payFast: "Schnelle Auszahlung",
+        payHighcut: "Hoher %-Anteil",
+      },
+      weights: "Wie wichtig sind dir diese Punkte?",
+      wFocus: "Content-Fokus",
+      wAnon: "Anonymität/Privatsphäre",
+      wGoal: "Abo/PPV-Ziel",
+      wRegion: "Region/Zielgruppe",
+      wPayout: "Auszahlung/PayPal",
+      evaluate: "Auswerten",
+      cancel: "Abbrechen",
+      back: "Zurück",
+      close: "Schließen",
+      notePaypal: "Hinweis: Viele deutsche Fans bevorzugen PayPal – wegen einfacher, diskreter Zahlung.",
+      features: "Features",
+      ourPick: "Unsere Empfehlung",
+      whyMaloum: "Warum MALOUM die richtige Empfehlung ist",
+      basedOn: "Basierend auf deinen Prioritäten:",
+      score: "Score",
+    }
   },
   en: {
-    title: "Platform Match",
-    stepLabel1: "Step 1/2: Priorities",
-    stepLabel2: "Step 2/2: Results",
-    thinking: "Our AI is thinking…",
-    copyLink: "Copy link",
-    evaluate: "Evaluate",
-    back: "Back",
-    close: "Close",
-    hintPaypal: "Many DACH fans prefer PayPal.",
-    sliders: {
-      anon: { label: "Anonymity", left: "Pseudonym & blur", right: "Face okay", hint: "How important is anonymity?" },
-      paypal: { label: "Low-friction payments (PayPal)", left: "Very important", right: "Doesn't matter", hint: "Fewer hurdles = more buys." },
-      dach: { label: "DACH focus / German support", left: "Important", right: "Global/US ok", hint: "German & GDPR preferred?" },
-      monetize: { label: "Monetization vs. Discovery", left: "Subs/PPV now", right: "Discovery first", hint: "Fast revenue or reach first?" },
-      policy: { label: "Policy risk", left: "Strict/low risk", right: "More freedom ok", hint: "How strict do you want it?" },
-      ux: { label: "Ease of use & support", left: "Simple + support", right: "Pro features (self)", hint: "How important is simplicity?" }
-    },
-    advTitle: "Advanced options",
-    adv: {
-      payout: { label: "Payout speed", left: "Important", right: "Doesn't matter" },
-      dm: { label: "DM automation", left: "Very important", right: "Unimportant" },
-      paywall: { label: "Paywall flexibility", left: "Bundles/trials", right: "Standard is fine" },
-      links: { label: "External links / funnel", left: "Important", right: "Doesn't matter" },
-      chargeback: { label: "Chargeback protection", left: "Very important", right: "Doesn't matter" },
-      analytics: { label: "Analytics depth", left: "Deep/cohorts", right: "Basic ok" },
-      kyc: { label: "KYC hurdles", left: "Low", right: "Doesn't matter" },
-      live: { label: "Live streaming", left: "Important", right: "Unimportant" }
-    },
-    results: {
-      top3: "Top recommendations",
-      whyFit: "Why this platform fits you",
-      headsUp: "Heads-up",
-      headsUpText: "Many German fans prefer PayPal – easy and discreet.",
-      chips: {
-        dachPayPal: "DACH & PayPal fit",
-        anon: "Anon friendly",
-        subsPpv: "Subs/PPV strong",
-        lowRisk: "Low policy risk",
-        easyStart: "Easy start",
-        dmAuto: "DM automations",
-        fastPayouts: "Fast payouts",
-        analytics: "Analytics depth",
-        funnel: "Funnel-friendly",
-        paywall: "Paywall flexibility"
-      }
-    },
-    platformBadge: "Our pick"
-  }
-};
-
-/* Slider Component */
-function Slider({ label, left, right, hint, value, onChange }) {
-  const pct = Math.max(0, Math.min(100, value ?? 0));
-  return (
-    <div className="p-3 rounded-xl border border-white/10 bg-white/5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="font-medium">{label}</div>
-        <div className="text-xs text-white/60">{Math.round(pct)}</div>
-      </div>
-      {hint && <div className="text-xs text-white/50 mt-0.5">{hint}</div>}
-      <div className="mt-2">
-        <input
-          type="range" min={0} max={100} value={pct}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full"
-          style={{
-            background: `linear-gradient(90deg, ${ACCENT} ${pct}%, #ffffff22 ${pct}%)`,
-            height: 4, borderRadius: 999
-          }}
-        />
-      </div>
-      <div className="mt-2 flex justify-between text-xs text-white/60">
-        <span>{left}</span>
-        <span>{right}</span>
-      </div>
-    </div>
-  );
-}
-
-/* Impact Chips */
-const Chip = ({ children }) => (
-  <span className="text-[11px] md:text-xs px-2 py-1 rounded-full border border-white/15 bg-white/5 text-white/80">{children}</span>
-);
-
-/* Weights (Einfluss) */
-const WEIGHTS = {
-  anon: 1.3,
-  paypal: 1.2,
-  dach: 1.2,
-  monetize: 1.1,
-  policy: 1.0,
-  ux: 0.9,
-  payout: 0.6,
-  dm: 0.6,
-  paywall: 0.5,
-  links: 0.5,
-  chargeback: 0.4,
-  analytics: 0.4,
-  kyc: 0.3,
-  live: 0.0 // neutralisiert
-};
-
-/* Plattform-Profile (0..5) */
-const PLATFORM = {
-  MALOUM:   { anon:5, paypal:5, dach:5, monetize:4, policy:4, ux:4, payout:4, dm:4, paywall:4, links:4, chargeback:4, analytics:4, kyc:4, live:2 },
-  OnlyFans: { anon:2, paypal:5, dach:3, monetize:5, policy:3, ux:4, payout:4, dm:4, paywall:5, links:3, chargeback:3, analytics:4, kyc:3, live:3 },
-  Fansly:   { anon:4, paypal:5, dach:3, monetize:4, policy:3, ux:4, payout:4, dm:4, paywall:4, links:3, chargeback:3, analytics:3, kyc:3, live:4 },
-  Fanvue:   { anon:2, paypal:4, dach:2, monetize:4, policy:3, ux:3, payout:4, dm:3, paywall:3, links:3, chargeback:3, analytics:3, kyc:3, live:2 },
-  ManyVids: { anon:2, paypal:4, dach:2, monetize:3, policy:3, ux:3, payout:3, dm:3, paywall:3, links:3, chargeback:3, analytics:3, kyc:3, live:1 }
-};
-
-const ALL_KEYS = Object.keys(WEIGHTS);
-
-/* Compute Score (0..10, fair) */
-function computeScores(prefs) {
-  const normUser = {};
-  ALL_KEYS.forEach(k => { normUser[k] = Math.max(0, Math.min(1, (prefs[k] ?? 0) / 100)); });
-
-  const theoreticalMax = ALL_KEYS.reduce((sum, k) => sum + WEIGHTS[k] * normUser[k] * 1, 0) || 1;
-
-  const out = Object.entries(PLATFORM).map(([name, prof]) => {
-    let raw = 0;
-    ALL_KEYS.forEach(k => {
-      const p = Math.max(0, Math.min(1, (prof[k] ?? 0) / 5));
-      raw += WEIGHTS[k] * normUser[k] * p;
-    });
-
-    const userDach = normUser.dach;
-    const platDach = Math.max(0, Math.min(1, (prof.dach ?? 0) / 5));
-    if (userDach >= 0.6 && platDach >= 0.6) raw *= 1.08;
-
-    const capped = Math.min(raw, theoreticalMax * 0.9);
-    const norm10 = 10 * (capped / theoreticalMax);
-    return { name, score: norm10, raw: capped, max: theoreticalMax };
-  });
-
-  out.sort((a, b) => b.score - a.score);
-
-  const malIndex = out.findIndex(p => p.name === "MALOUM");
-  if (malIndex > 2) {
-    const delta = out[2].score - out[malIndex].score;
-    if (delta <= 0.6) {
-      const mal = out.splice(malIndex, 1)[0];
-      out.splice(2, 1, mal);
+    nav: { vorteile: "Benefits", leistungen: "Services", prozess: "Process", referenzen: "References", vergleich: "Comparison", kontakt: "Contact" },
+    heroCta: "Free Discovery Call",
+    pm: {
+      title: "Platform Match",
+      aiThinks: "Our AI is thinking…",
+      analyzing: "Analyzing your inputs and building the ranking.",
+      step1: "Step 1/2: Priorities & Questions",
+      step2: "Step 2/2: Result & Comparison",
+      introTitle: "Tell us briefly what matters to you",
+      introHint: `e.g. "I'd like to stay anonymous, 3–4k/month, focus on subs & PayPal, DACH audience."`,
+      textareaPH: "Your priorities (anonymity, target revenue, platform prefs, region …)",
+      q: {
+        focus: "Content focus",
+        focusSoft: "Soft / teasing",
+        focusErotik: "Erotic",
+        focusExplicit: "Explicit",
+        anon: "Stay anonymous?",
+        anonNo: "No",
+        anonYes: "Yes",
+        goal: "Primary goal",
+        goalSubs: "Subscriptions / retention",
+        goalPpv: "PPV & DMs",
+        goalDiscover: "Reach",
+        region: "Target region",
+        regGlobal: "Global",
+        regDach: "DACH",
+        regUs: "US-focused",
+        payout: "Payout preference",
+        payPaypal: "Prefer PayPal",
+        payFast: "Fast payouts",
+        payHighcut: "High %-share",
+      },
+      weights: "How important are these to you?",
+      wFocus: "Content focus",
+      wAnon: "Anonymity/Privacy",
+      wGoal: "Subs/PPV goal",
+      wRegion: "Region/Audience",
+      wPayout: "Payout/PayPal",
+      evaluate: "Evaluate",
+      cancel: "Cancel",
+      back: "Back",
+      close: "Close",
+      notePaypal: "Note: Many German fans prefer PayPal — simple & discreet.",
+      features: "Features",
+      ourPick: "Our pick",
+      whyMaloum: "Why MALOUM is the right choice",
+      basedOn: "Based on your priorities:",
+      score: "Score",
     }
   }
+};
 
-  return out;
-}
-
-/* Impact-Chips */
-function chipsFor(name, prefs, lang) {
-  const t = I18N[lang].results.chips;
-  const chips = [];
-  const pf = PLATFORM[name];
-  const high = (k, thr = 70) => (prefs[k] ?? 0) >= thr;
-  const strong = (k, thr = 4) => (pf[k] ?? 0) >= thr;
-
-  if (high("dach") && strong("dach") && strong("paypal")) chips.push(t.dachPayPal);
-  if (high("anon") && strong("anon")) chips.push(t.anon);
-  if (high("monetize") && strong("monetize")) chips.push(t.subsPpv);
-  if (high("policy") && strong("policy")) chips.push(t.lowRisk);
-  if (high("ux") && strong("ux")) chips.push(t.easyStart);
-  if (high("dm") && strong("dm")) chips.push(t.dmAuto);
-  if (high("payout") && strong("payout")) chips.push(t.fastPayouts);
-  if (high("analytics") && strong("analytics")) chips.push(t.analytics);
-  if (high("links") && strong("links")) chips.push(t.funnel);
-  if (high("paywall") && strong("paywall")) chips.push(t.paywall);
-
-  return chips.slice(0, 5);
-}
-
-/* Reasons */
-function reasonsFor(name, prefs, lang) {
-  const pf = PLATFORM[name];
-  const lines = [];
-  const add = (de, en) => lines.push(lang === "de" ? de : en);
-
-  if ((prefs.anon ?? 0) >= 60 && (pf.anon ?? 0) >= 4)
-    add("Anonym bleiben ist dir wichtig – diese Plattform unterstützt das gut.",
-        "Anonymity matters to you – this platform supports it well.");
-
-  if ((prefs.paypal ?? 0) >= 60 && (pf.paypal ?? 0) >= 4)
-    add("PayPal/geringe Hürden: höhere Kaufbereitschaft deiner Fans.",
-        "PayPal/low friction: higher purchase intent from fans.");
-
-  if ((prefs.dach ?? 0) >= 60 && (pf.dach ?? 0) >= 4)
-    add("DACH/DE-Support & DSGVO sind hier stark ausgeprägt.",
-        "DACH/German support & GDPR are well covered.");
-
-  if ((prefs.monetize ?? 0) >= 60 && (pf.monetize ?? 0) >= 4)
-    add("Fokus auf Abos/PPV für planbare Umsätze.",
-        "Focus on subs/PPV for predictable revenue.");
-
-  if ((prefs.ux ?? 0) >= 60 && (pf.ux ?? 0) >= 4)
-    add("Einfache Bedienung & schneller Support erleichtern den Alltag.",
-        "Simple UX & fast support reduce overhead.");
-
-  if (lines.length === 0)
-    add("Solider Allround-Fit für deine Ziele.",
-        "Solid all-round fit for your goals.");
-
-  return lines.slice(0, 4);
-}
-
-/* URL helpers */
-function prefsToQuery(prefs, lang) {
-  const q = new URLSearchParams();
-  q.set("match", "");
-  q.set("v", "2");
-  q.set("lang", lang);
-  for (const k of ALL_KEYS) q.set(k, String(Math.round(prefs[k] ?? 0)));
-  return q.toString().replace("=", ""); // -> match&v=2&...
-}
-function readQuery() {
-  if (typeof window === "undefined") return {};
-  const sp = new URLSearchParams(window.location.search);
-  if (!sp.has("match")) return {};
-  const lang = sp.get("lang") || "de";
-  const prefs = {};
-  ALL_KEYS.forEach(k => { const v = Number(sp.get(k) ?? ""); if (!Number.isNaN(v)) prefs[k] = Math.max(0, Math.min(100, v)); });
-  return { lang, prefs };
-}
-
-/* =========================================================================================
-   Page
-   ========================================================================================= */
+/* === Page === */
 export default function Page() {
   const reduce = useReducedMotion();
 
-  /* Modal */
-  const [matchOpen, setMatchOpen] = useState(false);
-  const [matchStep, setMatchStep] = useState(1); // 1 | 2
-  const [matchLoading, setMatchLoading] = useState(false);
+  /* ====== Language ====== */
   const [lang, setLang] = useState("de");
 
-  // Body scroll lock
+  /* ====== Plattform Match – State ====== */
+  const [matchOpen, setMatchOpen] = useState(false);
+  const [matchStep, setMatchStep] = useState(1);   // 1=Form/Weights, 2=Result
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [matchResult, setMatchResult] = useState(null);
+  const [matchContext, setMatchContext] = useState(null);
+
+  /* Body scroll lock when modal open (mobile fix) */
   useEffect(() => {
     const prev = document.body.style.overflow;
-    if (matchOpen) document.body.style.overflow = "hidden";
-    else document.body.style.overflow = prev || "";
+    document.body.style.overflow = matchOpen ? "hidden" : prev || "";
     return () => { document.body.style.overflow = prev || ""; };
   }, [matchOpen]);
 
-  /* Prefs */
-  const [prefs, setPrefs] = useState({
-    anon: 60, paypal: 80, dach: 75, monetize: 70, policy: 50, ux: 60,
-    payout: 60, dm: 60, paywall: 60, links: 60, chargeback: 50, analytics: 50, kyc: 50, live: 0
+  /* ====== Form model (no Live) ====== */
+  const [pcForm, setPcForm] = useState({
+    focus: "soft",
+    anon: false,
+    goal: "subs",
+    region: "global",
+    payout: "paypal",
+    intro: ""
   });
 
-  // Hydrate from URL/localStorage
-  useEffect(() => {
-    const fromQ = readQuery();
-    if (fromQ.lang) setLang(fromQ.lang);
-    if (fromQ.prefs) {
-      setPrefs(p => ({ ...p, ...fromQ.prefs }));
-    } else {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("cb_match_v2_state") : null;
-      if (raw) {
-        try {
-          const saved = JSON.parse(raw);
-          if (saved?.prefs) setPrefs(p => ({ ...p, ...saved.prefs }));
-          if (saved?.lang) setLang(saved.lang);
-        } catch {}
-      }
+  /* ====== Weights (0–10 sliders) ====== */
+  const [weights, setWeights] = useState({
+    focus: 6,
+    anon: 8,
+    goal: 7,
+    region: 5,
+    payout: 6
+  });
+
+  /* ====== URL <-> State (deep link without any "copy" button) ====== */
+  const syncUrl = useMemo(() => ({
+    encode() {
+      const u = new URL(window.location.href);
+      // keep existing params but set our namespace
+      u.searchParams.set("match", "1");
+      u.searchParams.set("step", String(matchStep));
+      u.searchParams.set("lang", lang);
+
+      // form
+      Object.entries(pcForm).forEach(([k, v]) => {
+        u.searchParams.set(`f_${k}`, String(v));
+      });
+      // weights
+      Object.entries(weights).forEach(([k, v]) => {
+        u.searchParams.set(`w_${k}`, String(v));
+      });
+      history.replaceState(null, "", u.toString());
+    },
+    decode() {
+      try {
+        const u = new URL(window.location.href);
+        if (u.searchParams.get("match") === "1") {
+          setMatchOpen(true);
+          const s = parseInt(u.searchParams.get("step") || "1", 10);
+          setMatchStep(s === 2 ? 2 : 1);
+          const l = u.searchParams.get("lang");
+          if (l === "de" || l === "en") setLang(l);
+
+          const nForm = { ...pcForm };
+          ["focus","anon","goal","region","payout","intro"].forEach((key) => {
+            const val = u.searchParams.get(`f_${key}`);
+            if (val !== null) {
+              if (key === "anon") nForm.anon = val === "true";
+              else nForm[key] = val;
+            }
+          });
+          setPcForm(nForm);
+
+          const nW = { ...weights };
+          ["focus","anon","goal","region","payout"].forEach((key) => {
+            const val = u.searchParams.get(`w_${key}`);
+            if (val !== null) nW[key] = Math.max(0, Math.min(10, parseInt(val, 10) || 0));
+          });
+          setWeights(nW);
+        }
+      } catch {}
+    },
+    clear() {
+      const u = new URL(window.location.href);
+      u.searchParams.delete("match");
+      u.searchParams.delete("step");
+      u.searchParams.delete("lang");
+      ["focus","anon","goal","region","payout","intro"].forEach((k)=>u.searchParams.delete(`f_${k}`));
+      ["focus","anon","goal","region","payout"].forEach((k)=>u.searchParams.delete(`w_${k}`));
+      history.replaceState(null, "", u.toString());
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [matchStep, lang, pcForm, weights]);
 
-  // Persist
-  useEffect(() => {
-    if (typeof window !== "undefined")
-      localStorage.setItem("cb_match_v2_state", JSON.stringify({ prefs, lang }));
-  }, [prefs, lang]);
+  useEffect(() => { syncUrl.decode(); /* on mount */ }, []); // decode once
+  useEffect(() => { if (matchOpen) syncUrl.encode(); }, [matchOpen, matchStep, lang, pcForm, weights, syncUrl]); // live encode
 
-  // Update URL live (only Step 1)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!matchOpen || matchStep !== 1) return;
-    const base = window.location.origin + window.location.pathname;
-    const qs = prefsToQuery(prefs, lang);
-    window.history.replaceState(null, "", `${base}?${qs}`);
-  }, [prefs, lang, matchOpen, matchStep]);
+  /* ====== Infer from free text ====== */
+  function inferFromIntro(text) {
+    const t = (text || "").toLowerCase();
+    const u = {};
+    if (/anonym|ohne gesicht|diskret/.test(t)) u.anon = true;
+    if (/abo|subscription|subs/.test(t)) u.goal = "subs";
+    if (/(ppv|dm|direct|nachricht|pay per view|upsell)/.test(t)) u.goal = "ppv";
+    if (/\bde\b|deutsch|german|dach/.test(t)) u.region = "dach";
+    if (/\bus\b|usa/.test(t)) u.region = "us";
+    if (/paypal/.test(t)) u.payout = "paypal";
+    if (/explizit|explicit/.test(t)) u.focus = "explicit";
+    if (/soft|tease|softcore/.test(t)) u.focus = "soft";
+    return u;
+  }
 
-  const progressLabel = matchLoading
-    ? I18N[lang].thinking
-    : (matchStep === 1 ? I18N[lang].stepLabel1 : I18N[lang].stepLabel2);
-  const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
+  /* ====== Scoring (weights applied, no Live) ====== */
+  function computePlatformScores(f, w) {
+    const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
 
-  /* Evaluate */
-  const [result, setResult] = useState(null);
-  function onEvaluate(e) {
+    // Focus
+    if (f.focus === "soft")     { s.MALOUM += 2 * (w.focus/10); s.Fansly += 1 * (w.focus/10); }
+    if (f.focus === "erotik")   { s.MALOUM += 2 * (w.focus/10); s.OnlyFans += 2 * (w.focus/10); s.Fansly += 1 * (w.focus/10); }
+    if (f.focus === "explicit") { s.OnlyFans += 3 * (w.focus/10); s.ManyVids += 2 * (w.focus/10); s.MALOUM += 1 * (w.focus/10); }
+
+    // Anon/Privacy
+    if (f.anon) { s.MALOUM += 3 * (w.anon/10); s.Fansly += 1 * (w.anon/10); }
+
+    // Goal
+    if (f.goal === "subs")     { s.MALOUM += 2 * (w.goal/10); s.OnlyFans += 2 * (w.goal/10); s.Fansly += 2 * (w.goal/10); }
+    if (f.goal === "ppv")      { s.OnlyFans += 3 * (w.goal/10); s.MALOUM += 2 * (w.goal/10); s.ManyVids += 1 * (w.goal/10); }
+    if (f.goal === "discover") { s.MALOUM += 2 * (w.goal/10); s.Fansly += 2 * (w.goal/10); }
+
+    // Region
+    if (f.region === "dach")   { s.MALOUM += 2 * (w.region/10); }
+    if (f.region === "us")     { s.OnlyFans += 2 * (w.region/10); s.Fansly += 1 * (w.region/10); }
+    if (f.region === "global") { s.MALOUM += 1 * (w.region/10); s.OnlyFans += 1 * (w.region/10); s.Fansly += 1 * (w.region/10); }
+
+    // Payout / PayPal
+    if (f.payout === "paypal") { s.MALOUM += 2 * (w.payout/10); s.OnlyFans += 2 * (w.payout/10); s.Fansly += 2 * (w.payout/10); s.Fanvue += 1 * (w.payout/10); s.ManyVids += 1 * (w.payout/10); }
+    if (f.payout === "fast")   { s.MALOUM += 1 * (w.payout/10); s.OnlyFans += 1 * (w.payout/10); s.Fanvue += 1 * (w.payout/10); }
+    if (f.payout === "highcut"){ s.Fanvue += 1 * (w.payout/10); s.ManyVids += 1 * (w.payout/10); }
+
+    // small tie-break
+    s.MALOUM += 0.2;
+
+    const arr = Object.entries(s).map(([name, score]) => ({ name, score }));
+    arr.sort((a, b) => b.score - a.score);
+    return arr;
+  }
+
+  function submitPlatformMatch(e) {
     e?.preventDefault?.();
+    const inferred = inferFromIntro(pcForm.intro);
+    const merged = { ...pcForm, ...inferred };
+    setMatchContext(merged);
     setMatchLoading(true);
-    setMatchStep(1);
+    setMatchStep(1); // stay visually at step 1 while loading
+
     setTimeout(() => {
-      const scores = computeScores(prefs);
-      const enriched = scores.slice(0, 3).map(p => ({
-        name: p.name,
-        score: Math.round(p.score * 10) / 10,
-        chips: chipsFor(p.name, prefs, lang),
-        reasons: reasonsFor(p.name, prefs, lang)
-      }));
-      setResult(enriched);
+      const ranking = computePlatformScores(merged, weights);
+      setMatchResult(ranking);
       setMatchLoading(false);
       setMatchStep(2);
+      // update URL to step=2 for sharing result state as well (still no button)
+      const u = new URL(window.location.href);
+      u.searchParams.set("step", "2");
+      history.replaceState(null, "", u.toString());
     }, 900);
   }
 
-  /* Testimonials */
-  const TESTIMONIALS = [
-    { name: "Hannah L.", role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
-    { name: "Mia K.",    role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
-    { name: "Lea S.",    role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
-    { name: "Nora P.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
-    { name: "Julia M.",  role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
-    { name: "Alina R.",  role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
-    { name: "Emma T.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
-    { name: "Sofia W.",  role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
-    { name: "Lara B.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
-    { name: "Zoe F.",    role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Check-ins halten mich accountable. Wachstum ist messbar." },
-    { name: "Paula D.",  role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
-    { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "PayPal-Fokus für DE-Fans war der Gamechanger." }
+  /* ====== Feature icons in result cards ====== */
+  const FEATURES = [
+    { key:"anon",    label:"Anonymität möglich" },
+    { key:"ppv",     label:"Stark für Abos & PPV" },
+    { key:"fast",    label:"Schnelle Auszahlung" },
+    { key:"paypal",  label:"PayPal verfügbar" },
+    { key:"privacy", label:"DSGVO/Privatsphäre" },
+    { key:"de",      label:"DE-Support" }
   ];
 
-  /* ==================== PAGE ==================== */
+  const PROFILE = {
+    MALOUM:   { anon:true,  ppv:true, fast:true,  paypal:true,  privacy:true, de:true  },
+    OnlyFans: { anon:false, ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    Fansly:   { anon:true,  ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    Fanvue:   { anon:false, ppv:true, fast:true,  paypal:true,  privacy:true, de:false },
+    ManyVids: { anon:false, ppv:true, fast:false, paypal:true,  privacy:true, de:false }
+  };
+
+  const IconCell = ({v}) => v === true
+    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
+    : v === false
+      ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
+      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
+
+  /* ====== Testimonials (9× MALOUM) ====== */
+  const TESTIMONIALS = [
+    { name: "Hannah L.", role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1518806118471-f28b20a1d79d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
+    { name: "Mia K.",    role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
+    { name: "Lea S.",    role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
+    { name: "Nora P.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
+    { name: "Julia M.",  role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
+    { name: "Alina R.",  role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
+    { name: "Emma T.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
+    { name: "Sofia W.",  role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
+    { name: "Lara B.",   role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1545996124-0501ebae84d5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
+    { name: "Zoe F.",    role: "MALOUM", rating: 4, img: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Check-ins halten mich accountable. Wachstum ist messbar." },
+    { name: "Paula D.",  role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1546525848-3ce03ca516f6?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Faire Splits & echte Hilfe. Kein leeres Agentur-Blabla." },
+    { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1513379733131-47fc74b45fc7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "PayPal-Fokus für DE-Fans war der Gamechanger." },
+  ];
+
   return (
     <>
-      {/* Background Glow */}
+      {/* Background glow */}
       <div aria-hidden className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div
           className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1100px] h-[1100px] rounded-full blur-3xl opacity-30"
@@ -479,15 +420,24 @@ export default function Page() {
             <span className="ml-2 text-xs px-2 py-0.5 rounded border border-white/15 text-white/70">18+</span>
           </div>
           <nav className="hidden md:flex items-center gap-6 text-white/80">
-            <a href="#vorteile" className="hover:text-white">Vorteile</a>
-            <a href="#leistungen" className="hover:text-white">Leistungen</a>
-            <a href="#prozess" className="hover:text-white">Ablauf</a>
-            <a href="#referenzen" className="hover:text-white">Referenzen</a>
-            <a href="#vergleich" className="hover:text-white">Vergleich</a>
+            <a href="#vorteile" className="hover:text-white">{I18N[lang].nav.vorteile}</a>
+            <a href="#leistungen" className="hover:text-white">{I18N[lang].nav.leistungen}</a>
+            <a href="#prozess" className="hover:text-white">{I18N[lang].nav.prozess}</a>
+            <a href="#referenzen" className="hover:text-white">{I18N[lang].nav.referenzen}</a>
+            <a href="#vergleich" className="hover:text-white">{I18N[lang].nav.vergleich}</a>
           </nav>
-          <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
-            Kostenloses Erstgespräch
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-2 py-1 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
+              onClick={() => setLang((l)=> l==="de" ? "en" : "de")}
+              aria-label="Language"
+            >
+              {lang.toUpperCase()}
+            </button>
+            <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
+              {I18N[lang].heroCta}
+            </a>
+          </div>
         </div>
       </Section>
 
@@ -496,17 +446,23 @@ export default function Page() {
         <div className="grid md:grid-cols-2 gap-10 items-start">
           {/* Left */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: reduce ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: reduce ? 0.001 : 0.5 }}
           >
-            <Pill><Sparkles className="size-4" /><span>Die Adult-Agentur für nachhaltiges Creator-Wachstum</span></Pill>
+            <Pill>
+              <Sparkles className="size-4" />
+              <span>Die Adult-Agentur für nachhaltiges Creator-Wachstum</span>
+            </Pill>
 
             <div className="mt-4">
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.08] tracking-tight">
                 Wir bieten{" "}
-                <span className="rounded px-2 -mx-1 ring-1 ring-white/10" style={{ backgroundColor: `rgba(${ACCENT_RGB}, 0.45)` }}>
+                <span
+                  className="rounded px-2 -mx-1 ring-1 ring-white/10"
+                  style={{ backgroundColor: `rgba(${ACCENT_RGB}, 0.45)` }}
+                >
                   Mehrwert
                 </span>{" "}
                 für deinen Content.
@@ -521,19 +477,24 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 Call buchen <ArrowRight className="size-5" />
               </a>
+
+              {/* Plattform Match: dezent (kein Pink) */}
               <button
                 type="button"
-                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchLoading(false); }}
+                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
                 className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20 text-white"
               >
-                Plattform Match
-                <span className="absolute -top-2 -right-2 text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
+                {I18N[lang].pm.title}
+                <span
+                  className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded"
+                  style={{ background: ACCENT + "26", color: ACCENT }}
+                >
                   NEU
                 </span>
               </button>
             </div>
 
-            {/* Trust Points */}
+            {/* Trust */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-white/70">
               {["1:1 Coaching", "0 € Setupkosten", "Faire Splits", "Diskrete Betreuung"].map((t, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -544,12 +505,12 @@ export default function Page() {
             </div>
           </motion.div>
 
-          {/* Right: dashboard card */}
+          {/* Right: dashboard mock */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: reduce ? 0 : 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.55, delay: 0.05 }}
+            transition={{ duration: reduce ? 0.001 : 0.55, delay: reduce ? 0 : 0.05 }}
             className="relative md:mt-10 lg:mt-16 xl:mt-20"
           >
             <div className="rounded-xl bg-[#0f0f14] border border-white/10 overflow-hidden shadow-lg" role="img" aria-label="Creator Dashboard — 90 Tage">
@@ -595,7 +556,9 @@ export default function Page() {
       {/* VORTEILE */}
       <Section id="vorteile" className="py-6 md:py-12">
         <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Warum wir besser sind</h2>
-        <p className="text-white/75 max-w-2xl mb-6">Mehrwert speziell für Adult-Creatorinnen – mit Betreuung, Tools und Deals.</p>
+        <p className="text-white/75 max-w-2xl mb-6">
+          Mehrwert speziell für Adult-Creatorinnen – mit Betreuung, Tools und Deals.
+        </p>
         <div className="grid md:grid-cols-2 gap-6">
           <ul className="space-y-4">
             <li className="flex items-start gap-3">
@@ -720,7 +683,7 @@ export default function Page() {
             whileInView={{ scaleY: 1 }}
             viewport={{ once: true, amount: 0.2 }}
             style={{ transformOrigin: "top" }}
-            transition={{ duration: 0.8 }}
+            transition={{ duration: reduce ? 0 : 0.8 }}
           />
           <ol className="relative pl-6 sm:pl-8 space-y-8">
             {[
@@ -733,10 +696,10 @@ export default function Page() {
             ].map((s, i) => (
               <motion.li
                 key={s.title}
-                initial={{ opacity: 0, y: 18 }}
+                initial={{ opacity: 0, y: reduce ? 0 : 18 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: 0.4, delay: i * 0.05 }}
+                transition={{ duration: reduce ? 0.001 : 0.4, delay: reduce ? 0 : i * 0.05 }}
                 className="relative"
               >
                 <span className="absolute -left-[3px] top-1 size-3 rounded-full" style={{ background: ACCENT }} />
@@ -857,47 +820,31 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* ==================== PLATFORM MATCH MODAL ==================== */}
+      {/* ===== Plattform Match Modal ===== */}
       {matchOpen && (
         <div className="fixed inset-0 z-[70]">
           {/* Overlay */}
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMatchOpen(false)} />
-          {/* Scroll-Container */}
+          <div className="absolute inset-0 bg-black/60" onClick={() => { setMatchOpen(false); syncUrl.clear(); }} />
+          {/* Scroll-Container (Mobile fix) */}
           <div className="relative z-10 h-full overflow-y-auto">
             <div className="min-h-full flex items-start md:items-center justify-center p-4">
-              <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[920px] max-h-[100dvh] overflow-y-auto">
+              <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[880px] max-h-[calc(100dvh-2rem)] flex flex-col">
                 {/* Header */}
                 <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-2">
                   <div>
                     <div className="text-xs text-white/60">Creator-Base</div>
-                    <div className="text-lg font-semibold">{I18N[lang].title}</div>
+                    <div className="text-lg font-semibold">{I18N[lang].pm.title}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Lang toggle */}
                     <button
                       className="px-2 py-1 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
                       onClick={() => setLang((l) => (l === "de" ? "en" : "de"))}
                     >
                       {lang.toUpperCase()}
                     </button>
-
-                    {/* Copy link ONLY in Step 1 (not loading) */}
-                    {matchStep === 1 && !matchLoading && (
-                      <button
-                        onClick={() => {
-                          if (typeof window === "undefined") return;
-                          const base = window.location.origin + window.location.pathname;
-                          const qs = prefsToQuery(prefs, lang);
-                          const url = `${base}?${qs}`;
-                          navigator.clipboard?.writeText(url);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
-                      >
-                       
-                    )}
-
-                    <button onClick={() => setMatchOpen(false)} className="text-white/70 hover:text-white inline-flex items-center gap-1">
-                      <XCircle className="size-5" /> {I18N[lang].close}
+                    {/* 👉 KEIN „Link kopieren“-Button irgendwo! 👈 */}
+                    <button onClick={() => { setMatchOpen(false); syncUrl.clear(); }} className="text-white/70 hover:text-white inline-flex items-center gap-1">
+                      <XCircle className="size-5" /> {I18N[lang].pm.close}
                     </button>
                   </div>
                 </div>
@@ -905,148 +852,238 @@ export default function Page() {
                 {/* Progress */}
                 <div className="px-5 py-2">
                   <div className="h-1 w-full bg-white/10 rounded">
-                    <div className="h-1 rounded" style={{ width: progressWidth, background: ACCENT }} />
+                    <div className="h-1 rounded" style={{ width: matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%"), background:ACCENT }} />
                   </div>
-                  <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
+                  <div className="mt-2 text-xs text-white/60">
+                    {matchLoading ? I18N[lang].pm.aiThinks : (matchStep === 1 ? I18N[lang].pm.step1 : I18N[lang].pm.step2)}
+                  </div>
                 </div>
 
-                {/* STEP 1: Sliders */}
-                {matchStep === 1 && !matchLoading && (
-                  <form onSubmit={onEvaluate} className="px-5 pb-28 md:pb-6 grid gap-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      {(["anon","paypal","dach","monetize","policy","ux"]).map((k) => (
-                        <Slider
-                          key={k}
-                          label={I18N[lang].sliders[k].label}
-                          left={I18N[lang].sliders[k].left}
-                          right={I18N[lang].sliders[k].right}
-                          hint={I18N[lang].sliders[k].hint}
-                          value={prefs[k]}
-                          onChange={(v) => setPrefs(p => ({ ...p, [k]: v }))}
+                {/* Content (scroll area) */}
+                <div className="px-5 pb-20 overflow-y-auto"> {/* padding-bottom for sticky footer */}
+                  {/* STEP 1 */}
+                  {matchStep === 1 && !matchLoading && (
+                    <form onSubmit={submitPlatformMatch} className="grid gap-4">
+                      {/* Free text */}
+                      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-xs text-white/60">KI-gestützt</div>
+                        <div className="text-lg font-semibold mt-1">{I18N[lang].pm.introTitle}</div>
+                        <p className="text-white/70 text-sm mt-1">{I18N[lang].pm.introHint}</p>
+                        <textarea
+                          value={pcForm.intro}
+                          onChange={(e)=>setPcForm(v=>({...v, intro:e.target.value}))}
+                          rows={3}
+                          placeholder={I18N[lang].pm.textareaPH}
+                          className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
                         />
-                      ))}
-                    </div>
+                      </div>
 
-                    <details className="mt-2 rounded-xl border border-white/10 bg-white/5">
-                      <summary className="cursor-pointer list-none px-3 py-2 font-semibold">{I18N[lang].advTitle}</summary>
-                      <div className="p-3 grid md:grid-cols-2 gap-4">
-                        {(["payout","dm","paywall","links","chargeback","analytics","kyc","live"]).map((k) => (
-                          <Slider
-                            key={k}
-                            label={I18N[lang].adv[k].label}
-                            left={I18N[lang].adv[k].left}
-                            right={I18N[lang].adv[k].right}
-                            value={prefs[k]}
-                            onChange={(v) => setPrefs(p => ({ ...p, [k]: v }))}
-                          />
+                      {/* Quick selects */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-white/80">{I18N[lang].pm.q.focus}</label>
+                          <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="soft">{I18N[lang].pm.q.focusSoft}</option>
+                            <option value="erotik">{I18N[lang].pm.q.focusErotik}</option>
+                            <option value="explicit">{I18N[lang].pm.q.focusExplicit}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">{I18N[lang].pm.q.anon}</label>
+                          <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="no">{I18N[lang].pm.q.anonNo}</option>
+                            <option value="yes">{I18N[lang].pm.q.anonYes}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">{I18N[lang].pm.q.goal}</label>
+                          <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="subs">{I18N[lang].pm.q.goalSubs}</option>
+                            <option value="ppv">{I18N[lang].pm.q.goalPpv}</option>
+                            <option value="discover">{I18N[lang].pm.q.goalDiscover}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">{I18N[lang].pm.q.region}</label>
+                          <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="global">{I18N[lang].pm.q.regGlobal}</option>
+                            <option value="dach">{I18N[lang].pm.q.regDach}</option>
+                            <option value="us">{I18N[lang].pm.q.regUs}</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-sm text-white/80">{I18N[lang].pm.q.payout}</label>
+                          <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            <option value="paypal">{I18N[lang].pm.q.payPaypal}</option>
+                            <option value="fast">{I18N[lang].pm.q.payFast}</option>
+                            <option value="highcut">{I18N[lang].pm.q.payHighcut}</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Weights sliders (“Balken”) */}
+                      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-sm font-semibold mb-3">{I18N[lang].pm.weights}</div>
+                        {[
+                          ["focus", I18N[lang].pm.wFocus],
+                          ["anon",  I18N[lang].pm.wAnon],
+                          ["goal",  I18N[lang].pm.wGoal],
+                          ["region",I18N[lang].pm.wRegion],
+                          ["payout",I18N[lang].pm.wPayout],
+                        ].map(([key, label]) => (
+                          <div key={key} className="grid grid-cols-[160px_1fr_48px] items-center gap-3 py-2">
+                            <div className="text-white/80 text-sm">{label}</div>
+                            <input
+                              type="range" min={0} max={10} step={1}
+                              value={weights[key]}
+                              onChange={(e)=>setWeights(v=>({...v, [key]: parseInt(e.target.value,10)}))}
+                              className="w-full accent-white"
+                            />
+                            <div className="text-right text-white/70 text-sm">{weights[key]}/10</div>
+                          </div>
                         ))}
                       </div>
-                    </details>
+                    </form>
+                  )}
 
-                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
-                      <b>{I18N[lang].results.headsUp}:</b> {I18N[lang].results.headsUpText}
+                  {/* Loading */}
+                  {matchStep === 1 && matchLoading && (
+                    <div className="py-14 flex flex-col items-center text-center gap-3">
+                      <div
+                        className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
+                        style={{ borderTopColor: ACCENT }}
+                        aria-label={I18N[lang].pm.aiThinks}
+                      />
+                      <div className="text-white/80 font-medium">{I18N[lang].pm.aiThinks}</div>
+                      <div className="text-white/60 text-sm">{I18N[lang].pm.analyzing}</div>
                     </div>
+                  )}
 
-                    {/* Sticky Evaluate (mobile) */}
-                    <div className="md:hidden sticky bottom-0 left-0 right-0 z-[80]">
-                      <div className="mx-0 py-3 bg-[#111318]/95 backdrop-blur px-4">
-                        <button type="submit" className="w-full px-4 py-3 rounded font-semibold" style={{ background: ACCENT }}>
-                          {I18N[lang].evaluate}
-                        </button>
+                  {/* STEP 2 – Result */}
+                  {matchStep === 2 && matchResult && (
+                    <div className="pb-2">
+                      <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
+                        {I18N[lang].pm.notePaypal}
                       </div>
-                    </div>
 
-                    {/* Desktop CTA */}
-                    <div className="hidden md:flex items-center justify-end">
-                      <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
-                        {I18N[lang].evaluate} <ChevronRight className="size-4" />
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* Loading */}
-                {matchStep === 1 && matchLoading && (
-                  <div className="px-5 py-14 flex flex-col items-center text-center gap-3">
-                    <div
-                      className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
-                      style={{ borderTopColor: ACCENT }}
-                      aria-label="KI denkt…"
-                    />
-                    <div className="text-white/80 font-medium">{I18N[lang].thinking}</div>
-                    <div className="text-white/60 text-sm">Analysiert deine Prioritäten und erstellt das Ranking.</div>
-                  </div>
-                )}
-
-                {/* STEP 2: Results */}
-                {matchStep === 2 && result && (
-                  <div className="px-5 pb-32 md:pb-6">
-                    <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80 mb-3">
-                      <b>{I18N[lang].results.headsUp}:</b> {I18N[lang].results.headsUpText}
-                    </div>
-
-                    <div className="text-lg font-semibold mb-2">{I18N[lang].results.top3}</div>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {result.map((p) => (
-                        <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="text-xl font-semibold">{p.name}</div>
-                              <div className="text-white/70 text-sm">Score {p.score.toFixed(1)} / 10</div>
-                              <div className="mt-2 h-2 w-40 bg-white/10 rounded overflow-hidden">
-                                <div className="h-2" style={{ width: `${(p.score/10)*100}%`, background: ACCENT }} />
+                      {/* Bars for ranking overview */}
+                      <div className="mt-4 space-y-3">
+                        {matchResult.map((p, idx) => {
+                          const maxScore = matchResult[0]?.score || 1;
+                          const pct = Math.max(5, Math.round((p.score / maxScore) * 100));
+                          return (
+                            <div key={p.name} className="bg-white/5 border border-white/10 rounded-xl p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="font-semibold">{idx+1}. {p.name}</div>
+                                <div className="text-white/70 text-sm">{I18N[lang].pm.score} {p.score.toFixed(1)}</div>
+                              </div>
+                              <div className="mt-2 h-2 rounded bg-white/10 overflow-hidden">
+                                <div className="h-2" style={{ width: pct + "%", background: ACCENT }} />
                               </div>
                             </div>
-                            {p.name === "MALOUM" && (
-                              <span className="text-[10px] font-semibold px-2 py-1 rounded self-start" style={{ background: ACCENT + "26", color: ACCENT }}>
-                                {I18N[lang].platformBadge}
-                              </span>
-                            )}
-                          </div>
+                          );
+                        })}
+                      </div>
 
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {p.chips.map((c, i) => <Chip key={i}>{c}</Chip>)}
-                          </div>
+                      {/* Top 3 cards */}
+                      {(() => {
+                        const top = matchResult.slice(0,3);
+                        const mal = matchResult.find(p => p.name === "MALOUM");
+                        const hasMal = top.some(p => p.name === "MALOUM");
+                        const top3 = hasMal ? top : [top[0], top[1], mal].filter(Boolean);
 
-                          <div className="mt-3">
-                            <div className="text-white/70 text-sm mb-1">{I18N[lang].results.whyFit}</div>
-                            <ul className="text-sm text-white/90 space-y-1">
-                              {p.reasons.map((r, i) => <li key={i}>• {r}</li>)}
-                            </ul>
+                        const card = (p) => (
+                          <div key={p.name} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="text-xl font-semibold">{p.name}</div>
+                                <div className="text-white/70 text-sm">{I18N[lang].pm.score} {p.score.toFixed(1)}</div>
+                              </div>
+                              {p.name === "MALOUM" && (
+                                <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
+                                  {I18N[lang].pm.ourPick}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-3">
+                              <div className="text-white/70 text-sm mb-1">{I18N[lang].pm.features}</div>
+                              <ul className="space-y-2">
+                                {FEATURES.map(f => {
+                                  const v = PROFILE[p.name]?.[f.key];
+                                  return (
+                                    <li key={f.key} className="flex items-center justify-between">
+                                      <span className="text-white/80">{f.label}</span>
+                                      <IconCell v={v} />
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        );
 
-                    {/* Sticky actions (mobile) */}
-                    <div className="md:hidden sticky bottom-0 left-0 right-0 z-[80]">
-                      <div className="mx-0 py-3 bg-[#111318]/95 backdrop-blur px-4 flex items-center gap-2">
-                        <button
-                          onClick={() => { setMatchStep(1); setMatchLoading(false); }}
-                          className="flex-1 px-4 py-3 rounded bg-white/10 border border-white/20"
-                        >
-                          {I18N[lang].back}
-                        </button>
-                        <button
-                          onClick={() => setMatchOpen(false)}
-                          className="flex-1 px-4 py-3 rounded bg-white/10 border border-white/20"
-                        >
-                          {I18N[lang].close}
-                        </button>
+                        return <div className="mt-4 grid gap-4 md:grid-cols-3">{top3.map(card)}</div>;
+                      })()}
+
+                      {/* Why MALOUM */}
+                      <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
+                        <div className="text-lg font-semibold">{I18N[lang].pm.whyMaloum}</div>
+                        <div className="text-white/70 text-sm">{I18N[lang].pm.basedOn}</div>
+                        <ul className="mt-3 space-y-2 text-white/90">
+                          {(() => {
+                            const r = [];
+                            if (!matchContext) return null;
+                            if (matchContext.anon) r.push("Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut.");
+                            if (matchContext.goal === "subs" || matchContext.goal === "ppv") r.push("Fokus auf Abos & PPV – planbare Bundles und stabile Monetarisierung.");
+                            if (matchContext.payout === "paypal" || matchContext.region === "dach") r.push("Auszahlungen via PayPal – schnell & unkompliziert (beliebt bei DE-Fans).");
+                            if (matchContext.region === "dach") r.push("Datenschutz & Support – DSGVO-orientierte Prozesse, DE-Support.");
+                            if (r.length === 0) r.push("Solider Allround-Fit für planbares Wachstum und saubere Prozesse.");
+                            return r.map((t, i) => <li key={i}>• {t}</li>);
+                          })()}
+                        </ul>
                       </div>
                     </div>
+                  )}
+                </div>
 
-                    {/* Desktop actions */}
-                    <div className="hidden md:flex items-center justify-end gap-2 mt-4">
-                      <button onClick={() => { setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
-                        {I18N[lang].back}
+                {/* Sticky footer actions (always visible on mobile) */}
+                <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-5 py-3">
+                  <div className="flex items-center justify-end gap-2">
+                    {matchStep === 1 && !matchLoading && (
+                      <>
+                        <button onClick={()=>{ setMatchOpen(false); syncUrl.clear(); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                          {I18N[lang].pm.cancel}
+                        </button>
+                        <button onClick={submitPlatformMatch} className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
+                          {I18N[lang].pm.evaluate} <ChevronRight className="size-4" />
+                        </button>
+                      </>
+                    )}
+
+                    {matchStep === 1 && matchLoading && (
+                      <button disabled className="px-4 py-2 rounded bg-white/10 border border-white/20 opacity-70 cursor-not-allowed">
+                        {I18N[lang].pm.aiThinks}
                       </button>
-                      <button onClick={() => setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">
-                        {I18N[lang].close}
-                      </button>
-                    </div>
+                    )}
+
+                    {matchStep === 2 && (
+                      <>
+                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); const u=new URL(window.location.href); u.searchParams.set("step","1"); history.replaceState(null,"",u.toString()); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                          {I18N[lang].pm.back}
+                        </button>
+                        <button onClick={()=>{ setMatchOpen(false); syncUrl.clear(); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                          {I18N[lang].pm.close}
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
+
               </div>
             </div>
           </div>
