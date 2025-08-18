@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
@@ -13,8 +13,7 @@ const ACCENT = "#f464b0";
 const ACCENT_RGB = "244, 100, 176";
 
 /* ====== i18n ====== */
-type Lang = "de" | "en";
-const I18N: Record<Lang, any> = {
+const I18N = {
   de: {
     nav: { vorteile:"Vorteile", leistungen:"Leistungen", prozess:"Ablauf", referenzen:"Referenzen", vergleich:"Vergleich" },
     hero: {
@@ -145,7 +144,6 @@ const I18N: Record<Lang, any> = {
     kontakt_send:"Send request",
     footer_impressum:"Imprint", footer_privacy:"Privacy", footer_agb:"T&C",
 
-    /* Platform Match */
     pm_title:"Platform Match",
     pm_progress_1:"Step 1/2: Priorities & questions",
     pm_progress_loading:"AI is analysing your inputs…",
@@ -172,18 +170,18 @@ const I18N: Record<Lang, any> = {
 };
 
 /* ====== Layout helpers ====== */
-const Section = ({ id, className = "", children }:{id?:string, className?:string, children:any}) => (
+const Section = ({ id, className = "", children }) => (
   <section id={id} className={`w-full max-w-7xl mx-auto px-4 md:px-6 ${className}`}>{children}</section>
 );
 
-const Pill = ({ children }:{children:any}) => (
+const Pill = ({ children }) => (
   <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs md:text-sm bg-white/5 border-white/10 backdrop-blur">
     {children}
   </span>
 );
 
 /* ★ Stars */
-const Stars = ({ rating = 5 }:{rating?:number}) => {
+const Stars = ({ rating = 5 }) => {
   const full = Math.max(0, Math.min(5, Math.round(rating)));
   const empty = 5 - full;
   return (
@@ -199,13 +197,13 @@ const Stars = ({ rating = 5 }:{rating?:number}) => {
 };
 
 /* Fallback avatar (vector blur) */
-const FaceBlur = ({ name = "Model" }:{name?:string}) => {
+const FaceBlur = ({ name = "Model" }) => {
   let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
   const hair = `hsl(${h}, 60%, 28%)`;
   const skin = `hsl(${(h + 30) % 360}, 55%, 78%)`;
   const bg   = `hsl(${(h + 200) % 360}, 55%, 22%)`;
   return (
-    <div className="size-10 rounded-full overflow-hidden relative" aria-hidden>
+    <div className="w-10 h-10 rounded-full overflow-hidden relative" aria-hidden>
       <div className="absolute inset-0" style={{ background: bg }} />
       <svg viewBox="0 0 100 100" className="absolute inset-0" style={{ filter: "blur(6px)" }}>
         <circle cx="50" cy="36" r="26" fill={hair} />
@@ -217,11 +215,11 @@ const FaceBlur = ({ name = "Model" }:{name?:string}) => {
 };
 
 /* Realistic blurred avatar using Unsplash */
-const AvatarReal = ({ name, src, blur = 6 }:{name:string, src?:string, blur?:number}) => {
+const AvatarReal = ({ name, src, blur = 6 }) => {
   const [error, setError] = useState(false);
   if (!src || error) return <FaceBlur name={name} />;
   return (
-    <div className="size-10 rounded-full overflow-hidden">
+    <div className="w-10 h-10 rounded-full overflow-hidden">
       <img
         src={src}
         alt={name}
@@ -235,7 +233,7 @@ const AvatarReal = ({ name, src, blur = 6 }:{name:string, src?:string, blur?:num
 };
 
 /* Slider */
-const Slider = ({ label, value, onChange, hint }:{label:string, value:number, onChange:(v:number)=>void, hint?:string}) => (
+const Slider = ({ label, value, onChange, hint }) => (
   <div>
     <div className="flex items-center justify-between">
       <label className="text-sm text-white/80">{label}</label>
@@ -246,24 +244,23 @@ const Slider = ({ label, value, onChange, hint }:{label:string, value:number, on
       type="range" min={0} max={10} step={1}
       value={value}
       onChange={(e)=>onChange(parseInt(e.target.value,10))}
-      className="w-full mt-2 accent-white"
+      className="w-full mt-2"
     />
   </div>
 );
 
-/* ====== Page ====== */
 export default function Page() {
   const reduce = useReducedMotion();
-  const [lang, setLang] = useState<Lang>("de");
+  const [lang, setLang] = useState("de");
   const t = I18N[lang];
 
   /* ==== Plattform Match – State & Logik ==== */
   const [matchOpen, setMatchOpen] = useState(false);
-  const [matchStep, setMatchStep] = useState<1|2>(1);  // 1=Fragen, 2=Ergebnis
+  const [matchStep, setMatchStep] = useState(1);  // 1=Fragen, 2=Ergebnis
   const [matchLoading, setMatchLoading] = useState(false);
-  const [matchResult, setMatchResult] = useState<{name:string, raw:number, score:number}[]|null>(null);
-  const [matchContext, setMatchContext] = useState<any>(null);
-  const [copied, setCopied] = useState(false); // Feedback für Link kopieren
+  const [matchResult, setMatchResult] = useState(null);
+  const [matchContext, setMatchContext] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   // Body scroll lock when modal open
   useEffect(() => {
@@ -273,7 +270,25 @@ export default function Page() {
     return () => { document.body.style.overflow = prev || ""; };
   }, [matchOpen]);
 
-  const [pcForm, setPcForm] = useState<any>({
+  // Open from hash
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#plattform-match") {
+      setMatchOpen(true);
+      setMatchStep(1);
+    }
+  }, []);
+  // Keep hash in sync
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (matchOpen) {
+      if (window.location.hash !== "#plattform-match") window.history.pushState(null, "", "#plattform-match");
+    } else {
+      if (window.location.hash === "#plattform-match") window.history.pushState(null, "", " ");
+    }
+  }, [matchOpen]);
+
+  const [pcForm, setPcForm] = useState({
     focus: "soft",         // soft | erotik | explicit
     anon: false,
     goal: "subs",          // subs | ppv | discover
@@ -287,47 +302,28 @@ export default function Page() {
     weightMonetize: 7,
   });
 
-  // Hash open (#plattform-match)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash === "#plattform-match") {
-      setMatchOpen(true);
-      setMatchStep(1);
-    }
-  }, []);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (matchOpen) {
-      if (window.location.hash !== "#plattform-match") history.pushState(null, "", "#plattform-match");
-    } else {
-      if (window.location.hash === "#plattform-match") history.pushState(null, "", " ");
-    }
-  }, [matchOpen]);
-
-  function inferFromIntro(text:string) {
-    const t = (text || "").toLowerCase();
-    const u:any = {};
-    if (/anonym|ohne gesicht|diskret/.test(t)) { u.anon = true; u.weightAnon = Math.max(7, pcForm.weightAnon); }
-    if (/abo|subscription|subs/.test(t))       { u.goal = "subs"; u.weightMonetize = Math.max(7, pcForm.weightMonetize); }
-    if (/(ppv|dm|direct|nachricht|pay per view|upsell)/.test(t)) { u.goal = "ppv"; u.weightMonetize = Math.max(7, pcForm.weightMonetize); }
-    if (/\bde\b|deutsch|german|dach/.test(t))  { u.region = "dach"; u.weightDACH = Math.max(7, pcForm.weightDACH); }
-    if (/\bus\b|usa/.test(t)) { u.region = "us"; }
-    if (/paypal/.test(t)) { u.payout = "paypal"; u.weightPaypal = Math.max(7, pcForm.weightPaypal); }
+  function inferFromIntro(text) {
+    const ttxt = (text || "").toLowerCase();
+    const u = {};
+    if (/anonym|ohne gesicht|diskret/.test(ttxt)) { u.anon = true; u.weightAnon = Math.max(7, pcForm.weightAnon); }
+    if (/abo|subscription|subs/.test(ttxt))       { u.goal = "subs"; u.weightMonetize = Math.max(7, pcForm.weightMonetize); }
+    if (/(ppv|dm|direct|nachricht|pay per view|upsell)/.test(ttxt)) { u.goal = "ppv"; u.weightMonetize = Math.max(7, pcForm.weightMonetize); }
+    if (/\bde\b|deutsch|german|dach/.test(ttxt))  { u.region = "dach"; u.weightDACH = Math.max(7, pcForm.weightDACH); }
+    if (/\bus\b|usa/.test(ttxt)) { u.region = "us"; }
+    if (/paypal/.test(ttxt)) { u.payout = "paypal"; u.weightPaypal = Math.max(7, pcForm.weightPaypal); }
     return u;
   }
 
-  // scale helper (0..10 weight, 5 neutral)
-  const scaleBy = (w:number) => (v:number) => v * (w / 5);
+  const scaleBy = (w) => (v) => v * (w / 5);
 
-  // normalize 0..10
-  function normalizeScores(arr:{name:string, raw:number}[]) {
+  function normalizeScores(arr) {
     const vals = arr.map(a=>a.raw);
     const min = Math.min(...vals), max = Math.max(...vals);
     if (max - min < 1e-6) return arr.map(a => ({...a, score: 5.0}));
     return arr.map(a => ({...a, score: +(10 * (a.raw - min) / (max - min)).toFixed(1)}));
   }
 
-  function computePlatformScores(f:any) {
+  function computePlatformScores(f) {
     const w = {
       anon: f.weightAnon ?? 5,
       paypal: f.weightPaypal ?? 5,
@@ -338,9 +334,9 @@ export default function Page() {
     const S_pay  = scaleBy(w.paypal);
     const S_dach = scaleBy(w.dach);
     const S_mon  = scaleBy(w.monetize);
-    const S_reach= scaleBy(10 - w.monetize); // Gegenpol
+    const S_reach= scaleBy(10 - w.monetize);
 
-    const s:any = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
+    const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
 
     // Content focus
     if (f.focus === "soft")     { s.MALOUM += 2; s.Fansly += 1; }
@@ -365,15 +361,15 @@ export default function Page() {
     if (f.payout === "fast")   { s.MALOUM += 1; s.OnlyFans += 1; s.Fanvue += 1; }
     if (f.payout === "highcut"){ s.Fanvue += 1; s.ManyVids += 1; }
 
-    s.MALOUM += 0.2; // tiebreaker
+    s.MALOUM += 0.2; // tiny tiebreaker
 
-    const raw = Object.entries(s).map(([name, raw]) => ({ name, raw: raw as number }));
+    const raw = Object.entries(s).map(([name, raw]) => ({ name, raw }));
     const norm = normalizeScores(raw);
-    norm.sort((a,b)=>b.raw - a.raw);
+    norm.sort((a,b)=>b.score - a.score);
     return norm;
   }
 
-  function submitPlatformMatch(e?:React.FormEvent) {
+  function submitPlatformMatch(e) {
     e?.preventDefault?.();
     const inferred = inferFromIntro(pcForm.intro);
     const merged = { ...pcForm, ...inferred };
@@ -389,15 +385,20 @@ export default function Page() {
   }
 
   function copyShareLink() {
-    try {
-      if (typeof window === "undefined") return;
-      if (window.location.hash !== "#plattform-match") {
-        history.pushState(null, "", "#plattform-match");
-      }
-      navigator.clipboard?.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(()=>setCopied(false), 1500);
-    } catch {}
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#plattform-match") {
+      window.history.pushState(null, "", "#plattform-match");
+    }
+    const url = window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(()=> {
+        setCopied(true); setTimeout(()=>setCopied(false), 1500);
+      });
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = url; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+      setCopied(true); setTimeout(()=>setCopied(false), 1500);
+    }
   }
 
   const FEATURES = [
@@ -409,20 +410,19 @@ export default function Page() {
     { key:"privacy", label:"DSGVO / Privacy" },
     { key:"de",      label:"DE-Support" }
   ];
-  const PROFILE:any = {
+  const PROFILE = {
     MALOUM:   { anon:true,  ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:true  },
     OnlyFans: { anon:false, ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
     Fansly:   { anon:true,  ppv:true, live:true,  fast:true,  paypal:true,  privacy:true, de:false },
     Fanvue:   { anon:false, ppv:true, live:false, fast:true,  paypal:true,  privacy:true, de:false },
     ManyVids: { anon:false, ppv:true, live:false, fast:false, paypal:true,  privacy:true, de:false }
   };
-  const IconCell = ({v}:{v:boolean|null|undefined}) => v === true
-    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
+  const IconCell = ({v}) => v === true
+    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="w-4 h-4" />Ja</span>
     : v === false
-      ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
-      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
+      ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="w-4 h-4" />Nein</span>
+      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="w-4 h-4" />Teilweise</span>;
 
-  // Progress UI
   const progressLabel = matchLoading ? t.pm_progress_loading : (matchStep === 1 ? t.pm_progress_1 : t.pm_progress_2);
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
@@ -442,6 +442,9 @@ export default function Page() {
     { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text_de:"PayPal-Fokus für DE-Fans war der Gamechanger.", text_en:"PayPal focus for DE fans was the game changer." },
   ];
 
+  const CARD_ICONS = [LineChart, Users, ShieldCheck, ShieldCheck, Handshake, EyeOff];
+  const STEP_ICONS = [PhoneCall, Users, ClipboardList, Target, Rocket, Handshake];
+
   return (
     <>
       {/* background glow */}
@@ -456,7 +459,7 @@ export default function Page() {
       <Section className="py-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="size-8 rounded-lg grid place-items-center font-bold" style={{ background: ACCENT }}>CB</div>
+            <div className="w-8 h-8 rounded-lg grid place-items-center font-bold" style={{ background: ACCENT }}>CB</div>
             <span className="font-semibold tracking-tight">Creator-Base</span>
             <span className="ml-2 text-xs px-2 py-0.5 rounded border border-white/15 text-white/70">Agency</span>
             <span className="ml-2 text-xs px-2 py-0.5 rounded border border-white/15 text-white/70">18+</span>
@@ -473,7 +476,7 @@ export default function Page() {
               onClick={()=>setLang(l=>l==="de"?"en":"de")}
               className="inline-flex items-center gap-2 rounded-lg px-3 py-2 bg-white/10 border border-white/20 text-white hover:bg-white/20"
               title="Language">
-              <Languages className="size-4" />
+              <Languages className="w-4 h-4" />
               <span className="text-xs">{lang==="de"?"EN":"DE"}</span>
             </button>
             <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
@@ -492,7 +495,7 @@ export default function Page() {
             viewport={{ once: true, amount: 0.4 }}
             transition={{ duration: reduce ? 0.001 : 0.5 }}
           >
-            <Pill><Sparkles className="size-4" /><span>{t.hero.pill}</span></Pill>
+            <Pill><Sparkles className="w-4 h-4" /><span>{t.hero.pill}</span></Pill>
             <div className="mt-4">
               <h1 className="text-4xl md:text-6xl font-extrabold leading-[1.08] tracking-tight">
                 {t.hero.h1_a}{" "}
@@ -505,7 +508,7 @@ export default function Page() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
-                {t.hero.cta_call} <ArrowRight className="size-5" />
+                {t.hero.cta_call} <ArrowRight className="w-5 h-5" />
               </a>
               <button
                 type="button"
@@ -521,9 +524,9 @@ export default function Page() {
             </div>
 
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-white/70">
-              {(t.trust as string[]).map((txt, i) => (
+              {t.trust.map((txt, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4" style={{ color: ACCENT }} />
+                  <CheckCircle2 className="w-4 h-4" style={{ color: ACCENT }} />
                   <span>{txt}</span>
                 </div>
               ))}
@@ -541,12 +544,12 @@ export default function Page() {
             <div className="rounded-xl bg-[#0f0f14] border border-white/10 overflow-hidden shadow-lg" role="img" aria-label="Creator Dashboard — 90 Tage">
               <div className="px-4 py-2 flex items-center justify-between text-xs text-white/70 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block size-2.5 rounded-full bg-red-500"></span>
-                  <span className="inline-block size-2.5 rounded-full bg-yellow-500"></span>
-                  <span className="inline-block size-2.5 rounded-full bg-emerald-500"></span>
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+                  <span className="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
                   <span className="ml-3 text-white/60">Creator Dashboard — 90 Tage</span>
                 </div>
-                <span className="inline-flex items-center gap-1"><LineChart className="size-3" /> +38% / 30T</span>
+                <span className="inline-flex items-center gap-1"><LineChart className="w-3 h-3" /> +38% / 30T</span>
               </div>
               <div className="p-4">
                 <div className="grid grid-cols-3 gap-3 text-xs">
@@ -585,7 +588,7 @@ export default function Page() {
         <div className="grid md:grid-cols-2 gap-6">
           <ul className="space-y-4">
             <li className="flex items-start gap-3">
-              <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
+              <CheckCircle2 className="mt-0.5 w-5 h-5" style={{ color: ACCENT }} />
               <div>
                 <p className="font-semibold">
                   {t.exklusive}
@@ -596,17 +599,17 @@ export default function Page() {
                 <p className="text-white/75 text-sm">Bessere Konditionen, Promo-Slots & Early-Access-Features.</p>
               </div>
             </li>
-            {t.v_items.slice(0,2).map(([h, p]:any, i:number)=>(
+            {t.v_items.slice(0,2).map(([h, p], i)=>(
               <li key={i} className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
+                <CheckCircle2 className="mt-0.5 w-5 h-5" style={{ color: ACCENT }} />
                 <div><p className="font-semibold">{h}</p><p className="text-white/75 text-sm">{p}</p></div>
               </li>
             ))}
           </ul>
           <ul className="space-y-4">
-            {t.v_items.slice(2).map(([h, p]:any, i:number)=>(
+            {t.v_items.slice(2).map(([h, p], i)=>(
               <li key={i} className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
+                <CheckCircle2 className="mt-0.5 w-5 h-5" style={{ color: ACCENT }} />
                 <div><p className="font-semibold">{h}</p><p className="text-white/75 text-sm">{p}</p></div>
               </li>
             ))}
@@ -620,15 +623,18 @@ export default function Page() {
         <p className="text-white/75 max-w-2xl mb-6">{t.leistungen_p}</p>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {t.l_cards.map(([h, p]:any, i:number)=>(
-            <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-5">
-              <div className="size-10 rounded-xl grid place-items-center mb-2" style={{ background: ACCENT + "1a" }}>
-                {[LineChart, Users, ShieldCheck, ShieldCheck, Handshake, EyeOff][i % 6]({ className:"size-5", style:{ color: ACCENT } } as any)}
+          {t.l_cards.map(([h, p], i)=> {
+            const Icon = CARD_ICONS[i % CARD_ICONS.length];
+            return (
+              <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <div className="w-10 h-10 rounded-xl grid place-items-center mb-2" style={{ background: ACCENT + "1a" }}>
+                  <Icon className="w-5 h-5" style={{ color: ACCENT }} />
+                </div>
+                <h3 className="font-semibold mb-1">{h}</h3>
+                <p className="text-sm text-white/80">{p}</p>
               </div>
-              <h3 className="font-semibold mb-1">{h}</h3>
-              <p className="text-sm text-white/80">{p}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Section>
 
@@ -642,18 +648,21 @@ export default function Page() {
             initial={{ scaleY: 0 }} whileInView={{ scaleY: 1 }} viewport={{ once: true, amount: 0.2 }}
             style={{ transformOrigin: "top" }} transition={{ duration: reduce ? 0 : 0.8 }} />
           <ol className="relative pl-6 sm:pl-8 space-y-8">
-            {t.steps.map(([title, text]:any, i:number) => (
-              <motion.li key={title} initial={{ opacity: 0, y: reduce ? 0 : 18 }}
-                whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }}
-                transition={{ duration: reduce ? 0.001 : 0.4, delay: reduce ? 0 : i * 0.05 }} className="relative">
-                <span className="absolute -left-[3px] top-1 size-3 rounded-full" style={{ background: ACCENT }} />
-                <div className="flex items-center gap-2 mb-1">
-                  {[PhoneCall, Users, ClipboardList, Target, Rocket, Handshake][i]({ className:"size-4", style:{ color: ACCENT } } as any)}
-                  <h4 className="font-semibold">{title}</h4>
-                </div>
-                <p className="text-white/75 text-sm">{text}</p>
-              </motion.li>
-            ))}
+            {t.steps.map(([title, text], i) => {
+              const Icon = STEP_ICONS[i];
+              return (
+                <motion.li key={title} initial={{ opacity: 0, y: reduce ? 0 : 18 }}
+                  whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }}
+                  transition={{ duration: reduce ? 0.001 : 0.4, delay: reduce ? 0 : i * 0.05 }} className="relative">
+                  <span className="absolute -left-[3px] top-1 w-3 h-3 rounded-full" style={{ background: ACCENT }} />
+                  <div className="flex items-center gap-2 mb-1">
+                    <Icon className="w-4 h-4" style={{ color: ACCENT }} />
+                    <h4 className="font-semibold">{title}</h4>
+                  </div>
+                  <p className="text-white/75 text-sm">{text}</p>
+                </motion.li>
+              );
+            })}
           </ol>
         </div>
       </Section>
@@ -693,12 +702,12 @@ export default function Page() {
               </tr>
             </thead>
             <tbody>
-              {t.vergleich_rows.map(([k,a,b]:any, i:number)=>(
+              {t.vergleich_rows.map(([k,a,b], i)=>(
                 <tr key={i} className="align-top">
                   <td className="py-3 px-4 text-white/80">{k}</td>
                   <td className="py-3 px-4">
                     <div className="flex items-start gap-2">
-                      <CheckCircle2 className="mt-1 size-4" style={{ color: ACCENT }} />
+                      <CheckCircle2 className="mt-1 w-4 h-4" style={{ color: ACCENT }} />
                       <span className="text-white">{a}</span>
                     </div>
                   </td>
@@ -717,8 +726,8 @@ export default function Page() {
             <h2 className="text-2xl md:text-4xl font-bold tracking-tight">{t.kontakt_h}</h2>
             <p className="mt-2 text-white/75 max-w-prose">{t.kontakt_p}</p>
             <ul className="mt-5 space-y-2 text-white/75 text-sm">
-              {t.kontakt_bullets.map((b:string,i:number)=>(
-                <li key={i} className="flex items-center gap-2"><CheckCircle2 className="size-4" style={{ color: ACCENT }} /> {b}</li>
+              {t.kontakt_bullets.map((b,i)=>(
+                <li key={i} className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" style={{ color: ACCENT }} /> {b}</li>
               ))}
             </ul>
           </div>
@@ -773,7 +782,7 @@ export default function Page() {
                     <div className="text-lg font-semibold">{t.pm_title}</div>
                   </div>
                   <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
-                    <XCircle className="size-5" /> {t.pm_btn_close}
+                    <XCircle className="w-5 h-5" /> {t.pm_btn_close}
                   </button>
                 </div>
 
@@ -797,7 +806,7 @@ export default function Page() {
                         <p className="text-white/70 text-sm mt-1">{t.pm_intro_hint}</p>
                         <textarea
                           value={pcForm.intro}
-                          onChange={(e)=>setPcForm((v:any)=>({...v, intro:e.target.value}))}
+                          onChange={(e)=>setPcForm((v)=>({...v, intro:e.target.value}))}
                           rows={3}
                           placeholder={t.pm_intro_ph}
                           className="w-full mt-3 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50"
@@ -808,7 +817,7 @@ export default function Page() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm text-white/80">{lang==="de"?"Content-Fokus":"Content focus"}</label>
-                          <select value={pcForm.focus} onChange={e=>setPcForm((v:any)=>({...v, focus:e.target.value}))}
+                          <select value={pcForm.focus} onChange={e=>setPcForm((v)=>({...v, focus:e.target.value}))}
                                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="soft">{lang==="de"?"Soft / Teasing":"Soft / teasing"}</option>
                             <option value="erotik">{lang==="de"?"Erotik":"Erotic"}</option>
@@ -817,7 +826,7 @@ export default function Page() {
                         </div>
                         <div>
                           <label className="text-sm text-white/80">{lang==="de"?"Anonym bleiben?":"Stay anonymous?"}</label>
-                          <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm((v:any)=>({...v, anon:e.target.value==='yes'}))}
+                          <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm((v)=>({...v, anon:e.target.value==='yes'}))}
                                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="no">{lang==="de"?"Nein":"No"}</option>
                             <option value="yes">{lang==="de"?"Ja":"Yes"}</option>
@@ -825,7 +834,7 @@ export default function Page() {
                         </div>
                         <div>
                           <label className="text-sm text-white/80">{lang==="de"?"Primäres Ziel":"Primary goal"}</label>
-                          <select value={pcForm.goal} onChange={e=>setPcForm((v:any)=>({...v, goal:e.target.value}))}
+                          <select value={pcForm.goal} onChange={e=>setPcForm((v)=>({...v, goal:e.target.value}))}
                                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="subs">{lang==="de"?"Abos / Stammkundschaft":"Subscriptions / retention"}</option>
                             <option value="ppv">PPV & DMs</option>
@@ -834,7 +843,7 @@ export default function Page() {
                         </div>
                         <div>
                           <label className="text-sm text-white/80">{lang==="de"?"Ziel-Region":"Target region"}</label>
-                          <select value={pcForm.region} onChange={e=>setPcForm((v:any)=>({...v, region:e.target.value}))}
+                          <select value={pcForm.region} onChange={e=>setPcForm((v)=>({...v, region:e.target.value}))}
                                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="global">Global</option>
                             <option value="dach">DACH</option>
@@ -843,7 +852,7 @@ export default function Page() {
                         </div>
                         <div>
                           <label className="text-sm text-white/80">{lang==="de"?"Zahlungen":"Payments"}</label>
-                          <select value={pcForm.payout} onChange={e=>setPcForm((v:any)=>({...v, payout:e.target.value}))}
+                          <select value={pcForm.payout} onChange={e=>setPcForm((v)=>({...v, payout:e.target.value}))}
                                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
                             <option value="paypal">PayPal</option>
                             <option value="fast">{lang==="de"?"Schnelle Auszahlung":"Fast payout"}</option>
@@ -856,10 +865,10 @@ export default function Page() {
                       <div className="mt-2 rounded-xl bg-white/5 border border-white/10 p-4">
                         <div className="font-semibold mb-3">{t.pm_sliders_h}</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <Slider label={t.s_anon} value={pcForm.weightAnon} onChange={(v)=>setPcForm((x:any)=>({...x, weightAnon:v}))} hint={t.hint_anon}/>
-                          <Slider label={t.s_paypal} value={pcForm.weightPaypal} onChange={(v)=>setPcForm((x:any)=>({...x, weightPaypal:v}))} hint={t.hint_paypal}/>
-                          <Slider label={t.s_dach} value={pcForm.weightDACH} onChange={(v)=>setPcForm((x:any)=>({...x, weightDACH:v}))} hint={t.hint_dach}/>
-                          <Slider label={t.s_monetize} value={pcForm.weightMonetize} onChange={(v)=>setPcForm((x:any)=>({...x, weightMonetize:v}))} hint={t.hint_monetize}/>
+                          <Slider label={t.s_anon} value={pcForm.weightAnon} onChange={(v)=>setPcForm((x)=>({...x, weightAnon:v}))} hint={t.hint_anon}/>
+                          <Slider label={t.s_paypal} value={pcForm.weightPaypal} onChange={(v)=>setPcForm((x)=>({...x, weightPaypal:v}))} hint={t.hint_paypal}/>
+                          <Slider label={t.s_dach} value={pcForm.weightDACH} onChange={(v)=>setPcForm((x)=>({...x, weightDACH:v}))} hint={t.hint_dach}/>
+                          <Slider label={t.s_monetize} value={pcForm.weightMonetize} onChange={(v)=>setPcForm((x)=>({...x, weightMonetize:v}))} hint={t.hint_monetize}/>
                         </div>
                       </div>
                     </form>
@@ -868,7 +877,7 @@ export default function Page() {
                   {/* Loading */}
                   {matchStep === 1 && matchLoading && (
                     <div className="py-14 flex flex-col items-center text-center gap-3">
-                      <div className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin" style={{ borderTopColor: ACCENT }} aria-label="KI denkt…" />
+                      <div className="w-10 h-10 rounded-full border-2 border-white/20 animate-spin" style={{ borderTopColor: ACCENT }} aria-label="KI denkt…" />
                       <div className="text-white/80 font-medium">{t.pm_progress_loading}</div>
                       <div className="text-white/60 text-sm">{lang==="de"?"Analysiert deine Prioritäten und erstellt das Ranking.":"Analysing your priorities and building the ranking."}</div>
                     </div>
@@ -923,7 +932,7 @@ export default function Page() {
                         <div className="text-white/70 text-sm">{t.pm_why_p}</div>
                         <ul className="mt-3 space-y-2 text-white/90">
                           {(() => {
-                            const r:string[] = [];
+                            const r = [];
                             if (!matchContext) return null;
                             if (matchContext.anon) r.push(lang==="de"
                               ? "Du willst anonym bleiben – MALOUM unterstützt Hybrid-Modelle & Pseudonyme sehr gut."
@@ -948,20 +957,20 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Sticky action bar (mobile friendly). Hide during loading. */}
+                {/* Sticky action bar */}
                 {!matchLoading && (
                   <div className="sticky bottom-0 left-0 right-0 bg-[#0f0f14] border-t border-white/10 px-5 py-3 flex items-center justify-between gap-2">
                     {matchStep === 1 ? (
                       <>
                         <button onClick={copyShareLink}
                                 className="inline-flex items-center gap-2 px-3 py-2 rounded bg-white/10 border border-white/20 hover:bg-white/20 text-sm">
-                          <Link2 className="size-4" /> {copied ? t.pm_copied : t.pm_copy}
+                          <Link2 className="w-4 h-4" /> {copied ? t.pm_copied : t.pm_copy}
                         </button>
                         <div className="ml-auto flex items-center gap-2">
                           <button onClick={()=>setMatchOpen(false)}
                                   className="px-4 py-2 rounded bg-white/10 border border-white/20">{t.pm_btn_cancel}</button>
                           <button onClick={submitPlatformMatch}
-                                  className="px-4 py-2 rounded" style={{ background: ACCENT }}>{t.pm_btn_analyze} <ChevronRight className="inline size-4" /></button>
+                                  className="px-4 py-2 rounded" style={{ background: ACCENT }}>{t.pm_btn_analyze} <ChevronRight className="inline w-4 h-4" /></button>
                         </div>
                       </>
                     ) : (
@@ -987,7 +996,7 @@ export default function Page() {
       <Section className="py-12">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white/70 text-sm">
           <div className="flex items-center gap-3">
-            <div className="size-7 rounded-lg grid place-items-center font-bold" style={{ background: ACCENT }}>CB</div>
+            <div className="w-7 h-7 rounded-lg grid place-items-center font-bold" style={{ background: ACCENT }}>CB</div>
             <span>© {new Date().getFullYear()} Creator-Base</span>
           </div>
           <div className="flex items-center gap-5">
