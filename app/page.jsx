@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
@@ -13,18 +13,18 @@ const ACCENT = "#f464b0";
 const ACCENT_RGB = "244, 100, 176";
 
 /* ==== Layout Helpers ==== */
-const Section = ({ id, className = "", children }: any) => (
+const Section = ({ id, className = "", children }) => (
   <section id={id} className={`w-full max-w-7xl mx-auto px-4 md:px-6 ${className}`}>{children}</section>
 );
 
-const Pill = ({ children }: any) => (
+const Pill = ({ children }) => (
   <span className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs md:text-sm bg-white/5 border-white/10 backdrop-blur">
     {children}
   </span>
 );
 
 /* ==== Stars (4/5 & 5/5) ==== */
-const Stars = ({ rating = 5 }: { rating?: number }) => {
+const Stars = ({ rating = 5 }) => {
   const full = Math.max(0, Math.min(5, Math.round(rating)));
   const empty = 5 - full;
   return (
@@ -40,7 +40,7 @@ const Stars = ({ rating = 5 }: { rating?: number }) => {
 };
 
 /* ==== Avatar: realistisch + blur, Fallback Silhouette ==== */
-const FaceBlur = ({ name = "Model" }: { name?: string }) => {
+const FaceBlur = ({ name = "Model" }) => {
   let h = 0; for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
   const hair = `hsl(${h}, 60%, 28%)`;
   const skin = `hsl(${(h + 30) % 360}, 55%, 78%)`;
@@ -57,7 +57,7 @@ const FaceBlur = ({ name = "Model" }: { name?: string }) => {
   );
 };
 
-const AvatarReal = ({ name, src, blur = 6 }: { name: string; src?: string; blur?: number }) => {
+const AvatarReal = ({ name, src, blur = 6 }) => {
   const [error, setError] = useState(false);
   if (!src || error) return <FaceBlur name={name} />;
   return (
@@ -75,20 +75,17 @@ const AvatarReal = ({ name, src, blur = 6 }: { name: string; src?: string; blur?
 };
 
 /* =========================================================================================
-   Platform Match v2 –  Sliders, Advanced, Fair Scoring, DE/EN, Deep-Link
+   Platform Match v2 – Sliders, Advanced, Fair Scoring, DE/EN, Deep-Link
    ========================================================================================= */
 
-type Lang = "de" | "en";
-
 /* i18n strings */
-const I18N: Record<Lang, any> = {
+const I18N = {
   de: {
     title: "Plattform Match",
     stepLabel1: "Schritt 1/2: Prioritäten",
     stepLabel2: "Schritt 2/2: Ergebnis",
     thinking: "KI analysiert deine Angaben…",
     copyLink: "Link kopieren",
-    copied: "Kopiert!",
     evaluate: "Auswerten",
     back: "Zurück",
     close: "Schließen",
@@ -138,7 +135,6 @@ const I18N: Record<Lang, any> = {
     stepLabel2: "Step 2/2: Results",
     thinking: "Our AI is thinking…",
     copyLink: "Copy link",
-    copied: "Copied!",
     evaluate: "Evaluate",
     back: "Back",
     close: "Close",
@@ -185,9 +181,7 @@ const I18N: Record<Lang, any> = {
 };
 
 /* Slider Component */
-function Slider({
-  label, left, right, hint, value, onChange
-}: { label: string; left: string; right: string; hint?: string; value: number; onChange: (v: number) => void; }) {
+function Slider({ label, left, right, hint, value, onChange }) {
   const pct = Math.max(0, Math.min(100, value ?? 0));
   return (
     <div className="p-3 rounded-xl border border-white/10 bg-white/5">
@@ -216,12 +210,12 @@ function Slider({
 }
 
 /* Impact Chips */
-const Chip = ({ children }: any) => (
+const Chip = ({ children }) => (
   <span className="text-[11px] md:text-xs px-2 py-1 rounded-full border border-white/15 bg-white/5 text-white/80">{children}</span>
 );
 
 /* Weights (Einfluss) */
-const WEIGHTS: Record<string, number> = {
+const WEIGHTS = {
   anon: 1.3,
   paypal: 1.2,
   dach: 1.2,
@@ -235,11 +229,11 @@ const WEIGHTS: Record<string, number> = {
   chargeback: 0.4,
   analytics: 0.4,
   kyc: 0.3,
-  live: 0.0 // bewusst neutralisiert (kann später aktiviert werden)
+  live: 0.0 // neutralisiert
 };
 
 /* Plattform-Profile (0..5) */
-const PLATFORM: Record<string, Record<string, number>> = {
+const PLATFORM = {
   MALOUM:   { anon:5, paypal:5, dach:5, monetize:4, policy:4, ux:4, payout:4, dm:4, paywall:4, links:4, chargeback:4, analytics:4, kyc:4, live:2 },
   OnlyFans: { anon:2, paypal:5, dach:3, monetize:5, policy:3, ux:4, payout:4, dm:4, paywall:5, links:3, chargeback:3, analytics:4, kyc:3, live:3 },
   Fansly:   { anon:4, paypal:5, dach:3, monetize:4, policy:3, ux:4, payout:4, dm:4, paywall:4, links:3, chargeback:3, analytics:3, kyc:3, live:4 },
@@ -250,8 +244,8 @@ const PLATFORM: Record<string, Record<string, number>> = {
 const ALL_KEYS = Object.keys(WEIGHTS);
 
 /* Compute Score (0..10, fair) */
-function computeScores(prefs: Record<string, number>) {
-  const normUser: Record<string, number> = {};
+function computeScores(prefs) {
+  const normUser = {};
   ALL_KEYS.forEach(k => { normUser[k] = Math.max(0, Math.min(1, (prefs[k] ?? 0) / 100)); });
 
   const theoreticalMax = ALL_KEYS.reduce((sum, k) => sum + WEIGHTS[k] * normUser[k] * 1, 0) || 1;
@@ -263,22 +257,17 @@ function computeScores(prefs: Record<string, number>) {
       raw += WEIGHTS[k] * normUser[k] * p;
     });
 
-    // DACH Soft-Boost
     const userDach = normUser.dach;
     const platDach = Math.max(0, Math.min(1, (prof.dach ?? 0) / 5));
     if (userDach >= 0.6 && platDach >= 0.6) raw *= 1.08;
 
-    // Diminishing Returns Cap
     const capped = Math.min(raw, theoreticalMax * 0.9);
-
     const norm10 = 10 * (capped / theoreticalMax);
     return { name, score: norm10, raw: capped, max: theoreticalMax };
   });
 
-  // Sort high to low
   out.sort((a, b) => b.score - a.score);
 
-  // Diversity re-rank: bring MALOUM in if close to #3 (≤ 0.6)
   const malIndex = out.findIndex(p => p.name === "MALOUM");
   if (malIndex > 2) {
     const delta = out[2].score - out[malIndex].score;
@@ -291,14 +280,13 @@ function computeScores(prefs: Record<string, number>) {
   return out;
 }
 
-/* Impact Chips generator */
-function chipsFor(name: string, prefs: Record<string, number>, lang: Lang) {
+/* Impact-Chips */
+function chipsFor(name, prefs, lang) {
   const t = I18N[lang].results.chips;
-  const chips: string[] = [];
+  const chips = [];
   const pf = PLATFORM[name];
-
-  const high = (k: string, thr = 70) => (prefs[k] ?? 0) >= thr;
-  const strong = (k: string, thr = 4) => (pf[k] ?? 0) >= thr;
+  const high = (k, thr = 70) => (prefs[k] ?? 0) >= thr;
+  const strong = (k, thr = 4) => (pf[k] ?? 0) >= thr;
 
   if (high("dach") && strong("dach") && strong("paypal")) chips.push(t.dachPayPal);
   if (high("anon") && strong("anon")) chips.push(t.anon);
@@ -314,11 +302,11 @@ function chipsFor(name: string, prefs: Record<string, number>, lang: Lang) {
   return chips.slice(0, 5);
 }
 
-/* Reasons generator (2–4 bullets) */
-function reasonsFor(name: string, prefs: Record<string, number>, lang: Lang) {
+/* Reasons */
+function reasonsFor(name, prefs, lang) {
   const pf = PLATFORM[name];
-  const lines: string[] = [];
-  const add = (de: string, en: string) => lines.push(lang === "de" ? de : en);
+  const lines = [];
+  const add = (de, en) => lines.push(lang === "de" ? de : en);
 
   if ((prefs.anon ?? 0) >= 60 && (pf.anon ?? 0) >= 4)
     add("Anonym bleiben ist dir wichtig – diese Plattform unterstützt das gut.",
@@ -347,22 +335,21 @@ function reasonsFor(name: string, prefs: Record<string, number>, lang: Lang) {
   return lines.slice(0, 4);
 }
 
-/* Query helpers */
-function prefsToQuery(prefs: Record<string, number>, lang: Lang) {
+/* URL helpers */
+function prefsToQuery(prefs, lang) {
   const q = new URLSearchParams();
   q.set("match", "");
   q.set("v", "2");
   q.set("lang", lang);
   for (const k of ALL_KEYS) q.set(k, String(Math.round(prefs[k] ?? 0)));
-  return q.toString().replace("=", ""); // keep ?match&v=2...
+  return q.toString().replace("=", ""); // -> match&v=2&...
 }
-
-function readQuery(): { lang?: Lang; prefs?: Record<string, number> } {
+function readQuery() {
   if (typeof window === "undefined") return {};
   const sp = new URLSearchParams(window.location.search);
   if (!sp.has("match")) return {};
-  const lang = (sp.get("lang") as Lang) || "de";
-  const prefs: Record<string, number> = {};
+  const lang = sp.get("lang") || "de";
+  const prefs = {};
   ALL_KEYS.forEach(k => { const v = Number(sp.get(k) ?? ""); if (!Number.isNaN(v)) prefs[k] = Math.max(0, Math.min(100, v)); });
   return { lang, prefs };
 }
@@ -373,13 +360,13 @@ function readQuery(): { lang?: Lang; prefs?: Record<string, number> } {
 export default function Page() {
   const reduce = useReducedMotion();
 
-  /* ==== Modal State ==== */
+  /* Modal */
   const [matchOpen, setMatchOpen] = useState(false);
-  const [matchStep, setMatchStep] = useState<1 | 2>(1);
+  const [matchStep, setMatchStep] = useState(1); // 1 | 2
   const [matchLoading, setMatchLoading] = useState(false);
-  const [lang, setLang] = useState<Lang>("de");
+  const [lang, setLang] = useState("de");
 
-  // Lock body scroll when modal open
+  // Body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow;
     if (matchOpen) document.body.style.overflow = "hidden";
@@ -387,34 +374,37 @@ export default function Page() {
     return () => { document.body.style.overflow = prev || ""; };
   }, [matchOpen]);
 
-  /* ==== Prefs (Sliders) ==== */
-  const [prefs, setPrefs] = useState<Record<string, number>>({
+  /* Prefs */
+  const [prefs, setPrefs] = useState({
     anon: 60, paypal: 80, dach: 75, monetize: 70, policy: 50, ux: 60,
     payout: 60, dm: 60, paywall: 60, links: 60, chargeback: 50, analytics: 50, kyc: 50, live: 0
   });
 
-  // Hydrate from URL or localStorage
+  // Hydrate from URL/localStorage
   useEffect(() => {
     const fromQ = readQuery();
     if (fromQ.lang) setLang(fromQ.lang);
-    if (fromQ.prefs) { setPrefs(p => ({ ...p, ...fromQ.prefs })); }
-    else {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem("cb_match_v2_state");
-        if (raw) {
-          try { const saved = JSON.parse(raw); if (saved?.prefs) setPrefs((p) => ({ ...p, ...saved.prefs })); if (saved?.lang) setLang(saved.lang); } catch {}
-        }
+    if (fromQ.prefs) {
+      setPrefs(p => ({ ...p, ...fromQ.prefs }));
+    } else {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("cb_match_v2_state") : null;
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw);
+          if (saved?.prefs) setPrefs(p => ({ ...p, ...saved.prefs }));
+          if (saved?.lang) setLang(saved.lang);
+        } catch {}
       }
     }
   }, []);
 
-  // Persist to localStorage
+  // Persist
   useEffect(() => {
     if (typeof window !== "undefined")
       localStorage.setItem("cb_match_v2_state", JSON.stringify({ prefs, lang }));
   }, [prefs, lang]);
 
-  // Update URL on Step 1 changes
+  // Update URL live (only Step 1)
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!matchOpen || matchStep !== 1) return;
@@ -423,16 +413,14 @@ export default function Page() {
     window.history.replaceState(null, "", `${base}?${qs}`);
   }, [prefs, lang, matchOpen, matchStep]);
 
-  /* ==== Progress Bar ==== */
   const progressLabel = matchLoading
     ? I18N[lang].thinking
     : (matchStep === 1 ? I18N[lang].stepLabel1 : I18N[lang].stepLabel2);
   const progressWidth = matchLoading ? "75%" : (matchStep === 1 ? "50%" : "100%");
 
-  /* ==== Evaluate ==== */
-  const [result, setResult] = useState<{ name: string; score: number; chips: string[]; reasons: string[] }[] | null>(null);
-
-  function onEvaluate(e?: React.FormEvent) {
+  /* Evaluate */
+  const [result, setResult] = useState(null);
+  function onEvaluate(e) {
     e?.preventDefault?.();
     setMatchLoading(true);
     setMatchStep(1);
@@ -450,9 +438,7 @@ export default function Page() {
     }, 900);
   }
 
-  /* =========================================================================================
-     Testimonials (9x MALOUM, real avatars blurred, mixed 4/5 & 5/5)
-     ========================================================================================= */
+  /* Testimonials */
   const TESTIMONIALS = [
     { name: "Hannah L.", role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
     { name: "Mia K.",    role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
@@ -468,10 +454,7 @@ export default function Page() {
     { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "PayPal-Fokus für DE-Fans war der Gamechanger." }
   ];
 
-  /* =========================================================================================
-     UI
-     ========================================================================================= */
-
+  /* ==================== PAGE ==================== */
   return (
     <>
       {/* Background Glow */}
@@ -538,7 +521,6 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 Call buchen <ArrowRight className="size-5" />
               </a>
-              {/* Plattform Match neutral */}
               <button
                 type="button"
                 onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchLoading(false); }}
@@ -898,7 +880,8 @@ export default function Page() {
                     >
                       {lang.toUpperCase()}
                     </button>
-                    {/* Copy link only on Step 1 and not loading */}
+
+                    {/* Copy link ONLY in Step 1 (not loading) */}
                     {matchStep === 1 && !matchLoading && (
                       <button
                         onClick={() => {
@@ -913,6 +896,7 @@ export default function Page() {
                         <Copy className="size-4" /> {I18N[lang].copyLink}
                       </button>
                     )}
+
                     <button onClick={() => setMatchOpen(false)} className="text-white/70 hover:text-white inline-flex items-center gap-1">
                       <XCircle className="size-5" /> {I18N[lang].close}
                     </button>
@@ -929,10 +913,9 @@ export default function Page() {
 
                 {/* STEP 1: Sliders */}
                 {matchStep === 1 && !matchLoading && (
-                  <form onSubmit={onEvaluate} className="px-5 pb-20 md:pb-6 grid gap-4">
-                    {/* Quick Sliders */}
+                  <form onSubmit={onEvaluate} className="px-5 pb-28 md:pb-6 grid gap-4">
                     <div className="grid md:grid-cols-2 gap-4">
-                      {(["anon","paypal","dach","monetize","policy","ux"] as const).map((k) => (
+                      {(["anon","paypal","dach","monetize","policy","ux"]).map((k) => (
                         <Slider
                           key={k}
                           label={I18N[lang].sliders[k].label}
@@ -945,11 +928,10 @@ export default function Page() {
                       ))}
                     </div>
 
-                    {/* Advanced */}
                     <details className="mt-2 rounded-xl border border-white/10 bg-white/5">
                       <summary className="cursor-pointer list-none px-3 py-2 font-semibold">{I18N[lang].advTitle}</summary>
                       <div className="p-3 grid md:grid-cols-2 gap-4">
-                        {(["payout","dm","paywall","links","chargeback","analytics","kyc","live"] as const).map((k) => (
+                        {(["payout","dm","paywall","links","chargeback","analytics","kyc","live"]).map((k) => (
                           <Slider
                             key={k}
                             label={I18N[lang].adv[k].label}
@@ -962,19 +944,14 @@ export default function Page() {
                       </div>
                     </details>
 
-                    {/* Heads-up */}
                     <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
                       <b>{I18N[lang].results.headsUp}:</b> {I18N[lang].results.headsUpText}
                     </div>
 
-                    {/* Sticky evaluate (mobile) */}
-                    <div className="md:hidden fixed left-0 right-0 bottom-0 z-[80]">
-                      <div className="mx-4 mb-4 rounded-xl border border-white/15 bg-[#111318]/95 backdrop-blur px-3 py-2">
-                        <button
-                          type="submit"
-                          className="w-full px-4 py-3 rounded font-semibold"
-                          style={{ background: ACCENT }}
-                        >
+                    {/* Sticky Evaluate (mobile) */}
+                    <div className="md:hidden sticky bottom-0 left-0 right-0 z-[80]">
+                      <div className="mx-0 py-3 bg-[#111318]/95 backdrop-blur px-4">
+                        <button type="submit" className="w-full px-4 py-3 rounded font-semibold" style={{ background: ACCENT }}>
                           {I18N[lang].evaluate}
                         </button>
                       </div>
@@ -1004,7 +981,7 @@ export default function Page() {
 
                 {/* STEP 2: Results */}
                 {matchStep === 2 && result && (
-                  <div className="px-5 pb-20 md:pb-6">
+                  <div className="px-5 pb-32 md:pb-6">
                     <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80 mb-3">
                       <b>{I18N[lang].results.headsUp}:</b> {I18N[lang].results.headsUpText}
                     </div>
@@ -1017,7 +994,6 @@ export default function Page() {
                             <div>
                               <div className="text-xl font-semibold">{p.name}</div>
                               <div className="text-white/70 text-sm">Score {p.score.toFixed(1)} / 10</div>
-                              {/* Score Bar */}
                               <div className="mt-2 h-2 w-40 bg-white/10 rounded overflow-hidden">
                                 <div className="h-2" style={{ width: `${(p.score/10)*100}%`, background: ACCENT }} />
                               </div>
@@ -1029,12 +1005,10 @@ export default function Page() {
                             )}
                           </div>
 
-                          {/* Chips */}
                           <div className="mt-3 flex flex-wrap gap-1.5">
                             {p.chips.map((c, i) => <Chip key={i}>{c}</Chip>)}
                           </div>
 
-                          {/* Reasons */}
                           <div className="mt-3">
                             <div className="text-white/70 text-sm mb-1">{I18N[lang].results.whyFit}</div>
                             <ul className="text-sm text-white/90 space-y-1">
@@ -1045,9 +1019,9 @@ export default function Page() {
                       ))}
                     </div>
 
-                    {/* Sticky action row (mobile) */}
-                    <div className="md:hidden fixed left-0 right-0 bottom-0 z-[80]">
-                      <div className="mx-4 mb-4 rounded-xl border border-white/15 bg-[#111318]/95 backdrop-blur px-3 py-2 flex items-center gap-2">
+                    {/* Sticky actions (mobile) */}
+                    <div className="md:hidden sticky bottom-0 left-0 right-0 z-[80]">
+                      <div className="mx-0 py-3 bg-[#111318]/95 backdrop-blur px-4 flex items-center gap-2">
                         <button
                           onClick={() => { setMatchStep(1); setMatchLoading(false); }}
                           className="flex-1 px-4 py-3 rounded bg-white/10 border border-white/20"
