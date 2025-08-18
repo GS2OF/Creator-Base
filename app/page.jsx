@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Sparkles, PhoneCall, ClipboardList,
@@ -183,14 +183,13 @@ const I18N = {
   }
 };
 
-/* === Page === */
 export default function Page() {
   const reduce = useReducedMotion();
 
-  /* ====== Language ====== */
+  /* ===== Language ===== */
   const [lang, setLang] = useState("de");
 
-  /* ====== Plattform Match – State ====== */
+  /* ===== Plattform Match – State ===== */
   const [matchOpen, setMatchOpen] = useState(false);
   const [matchStep, setMatchStep] = useState(1);   // 1=Form/Weights, 2=Result
   const [matchLoading, setMatchLoading] = useState(false);
@@ -204,7 +203,7 @@ export default function Page() {
     return () => { document.body.style.overflow = prev || ""; };
   }, [matchOpen]);
 
-  /* ====== Form model (no Live) ====== */
+  /* ===== Form model (no Live) ===== */
   const [pcForm, setPcForm] = useState({
     focus: "soft",
     anon: false,
@@ -214,7 +213,7 @@ export default function Page() {
     intro: ""
   });
 
-  /* ====== Weights (0–10 sliders) ====== */
+  /* ===== Weights (0–10 sliders) ===== */
   const [weights, setWeights] = useState({
     focus: 6,
     anon: 8,
@@ -223,70 +222,40 @@ export default function Page() {
     payout: 6
   });
 
-  /* ====== URL <-> State (deep link without any "copy" button) ====== */
-  const syncUrl = useMemo(() => ({
-    encode() {
-      const u = new URL(window.location.href);
-      // keep existing params but set our namespace
-      u.searchParams.set("match", "1");
-      u.searchParams.set("step", String(matchStep));
-      u.searchParams.set("lang", lang);
+  /* ===== Hash-based deep link: #plattformmatch ===== */
+  useEffect(() => {
+    const applyFromHash = () => {
+      if (window.location.hash === "#plattformmatch") {
+        setMatchOpen(true);
+        setMatchStep(1);
+      } else {
+        setMatchOpen(false);
+      }
+    };
+    applyFromHash();
+    window.addEventListener("hashchange", applyFromHash);
+    return () => window.removeEventListener("hashchange", applyFromHash);
+  }, []);
 
-      // form
-      Object.entries(pcForm).forEach(([k, v]) => {
-        u.searchParams.set(`f_${k}`, String(v));
-      });
-      // weights
-      Object.entries(weights).forEach(([k, v]) => {
-        u.searchParams.set(`w_${k}`, String(v));
-      });
-      history.replaceState(null, "", u.toString());
-    },
-    decode() {
-      try {
-        const u = new URL(window.location.href);
-        if (u.searchParams.get("match") === "1") {
-          setMatchOpen(true);
-          const s = parseInt(u.searchParams.get("step") || "1", 10);
-          setMatchStep(s === 2 ? 2 : 1);
-          const l = u.searchParams.get("lang");
-          if (l === "de" || l === "en") setLang(l);
-
-          const nForm = { ...pcForm };
-          ["focus","anon","goal","region","payout","intro"].forEach((key) => {
-            const val = u.searchParams.get(`f_${key}`);
-            if (val !== null) {
-              if (key === "anon") nForm.anon = val === "true";
-              else nForm[key] = val;
-            }
-          });
-          setPcForm(nForm);
-
-          const nW = { ...weights };
-          ["focus","anon","goal","region","payout"].forEach((key) => {
-            const val = u.searchParams.get(`w_${key}`);
-            if (val !== null) nW[key] = Math.max(0, Math.min(10, parseInt(val, 10) || 0));
-          });
-          setWeights(nW);
-        }
-      } catch {}
-    },
-    clear() {
-      const u = new URL(window.location.href);
-      u.searchParams.delete("match");
-      u.searchParams.delete("step");
-      u.searchParams.delete("lang");
-      ["focus","anon","goal","region","payout","intro"].forEach((k)=>u.searchParams.delete(`f_${k}`));
-      ["focus","anon","goal","region","payout"].forEach((k)=>u.searchParams.delete(`w_${k}`));
-      history.replaceState(null, "", u.toString());
+  const openMatch = () => {
+    setMatchResult(null);
+    setMatchLoading(false);
+    setMatchStep(1);
+    // Set only the hash — shareable link in the address bar
+    if (window.location.hash !== "#plattformmatch") {
+      history.replaceState(null, "", window.location.pathname + window.location.search + "#plattformmatch");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [matchStep, lang, pcForm, weights]);
+    setMatchOpen(true);
+  };
 
-  useEffect(() => { syncUrl.decode(); /* on mount */ }, []); // decode once
-  useEffect(() => { if (matchOpen) syncUrl.encode(); }, [matchOpen, matchStep, lang, pcForm, weights, syncUrl]); // live encode
+  const closeMatch = () => {
+    setMatchLoading(false);
+    // Remove hash without adding history entry
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    setMatchOpen(false);
+  };
 
-  /* ====== Infer from free text ====== */
+  /* ===== Infer from free text ===== */
   function inferFromIntro(text) {
     const t = (text || "").toLowerCase();
     const u = {};
@@ -301,7 +270,7 @@ export default function Page() {
     return u;
   }
 
-  /* ====== Scoring (weights applied, no Live) ====== */
+  /* ===== Scoring (weights applied, no Live) ===== */
   function computePlatformScores(f, w) {
     const s = { MALOUM: 3, OnlyFans: 0, Fansly: 1, Fanvue: 0, ManyVids: 0 };
 
@@ -328,7 +297,7 @@ export default function Page() {
     if (f.payout === "fast")   { s.MALOUM += 1 * (w.payout/10); s.OnlyFans += 1 * (w.payout/10); s.Fanvue += 1 * (w.payout/10); }
     if (f.payout === "highcut"){ s.Fanvue += 1 * (w.payout/10); s.ManyVids += 1 * (w.payout/10); }
 
-    // small tie-break
+    // tie-break
     s.MALOUM += 0.2;
 
     const arr = Object.entries(s).map(([name, score]) => ({ name, score }));
@@ -342,21 +311,18 @@ export default function Page() {
     const merged = { ...pcForm, ...inferred };
     setMatchContext(merged);
     setMatchLoading(true);
-    setMatchStep(1); // stay visually at step 1 while loading
+    setMatchStep(1);
 
     setTimeout(() => {
       const ranking = computePlatformScores(merged, weights);
       setMatchResult(ranking);
       setMatchLoading(false);
       setMatchStep(2);
-      // update URL to step=2 for sharing result state as well (still no button)
-      const u = new URL(window.location.href);
-      u.searchParams.set("step", "2");
-      history.replaceState(null, "", u.toString());
+      // Hash bleibt #plattformmatch – sharebar
     }, 900);
   }
 
-  /* ====== Feature icons in result cards ====== */
+  /* ===== Feature flags in cards ===== */
   const FEATURES = [
     { key:"anon",    label:"Anonymität möglich" },
     { key:"ppv",     label:"Stark für Abos & PPV" },
@@ -380,7 +346,7 @@ export default function Page() {
       ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />Nein</span>
       : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
 
-  /* ====== Testimonials (9× MALOUM) ====== */
+  /* ===== Testimonials (9× MALOUM) ===== */
   const TESTIMONIALS = [
     { name: "Hannah L.", role: "MALOUM", rating: 5, img: "https://images.unsplash.com/photo-1518806118471-f28b20a1d79d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Wöchentliche To-dos, klare Preise, DM-Templates – endlich Struktur." },
     { name: "Mia K.",    role: "Fansly", rating: 4, img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Diskret & fair. In 8 Wochen auf planbare 4-stellige Umsätze." },
@@ -427,12 +393,13 @@ export default function Page() {
             <a href="#vergleich" className="hover:text-white">{I18N[lang].nav.vergleich}</a>
           </nav>
           <div className="flex items-center gap-2">
+            {/* Button zeigt IMMER die andere Sprache (DE -> EN, EN -> DE) */}
             <button
               className="px-2 py-1 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
               onClick={() => setLang((l)=> l==="de" ? "en" : "de")}
               aria-label="Language"
             >
-              {lang.toUpperCase()}
+              {lang === "de" ? "EN" : "DE"}
             </button>
             <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
               {I18N[lang].heroCta}
@@ -481,7 +448,7 @@ export default function Page() {
               {/* Plattform Match: dezent (kein Pink) */}
               <button
                 type="button"
-                onClick={() => { setMatchOpen(true); setMatchStep(1); setMatchResult(null); setMatchLoading(false); }}
+                onClick={openMatch}
                 className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20 text-white"
               >
                 {I18N[lang].pm.title}
@@ -824,7 +791,7 @@ export default function Page() {
       {matchOpen && (
         <div className="fixed inset-0 z-[70]">
           {/* Overlay */}
-          <div className="absolute inset-0 bg-black/60" onClick={() => { setMatchOpen(false); syncUrl.clear(); }} />
+          <div className="absolute inset-0 bg-black/60" onClick={closeMatch} />
           {/* Scroll-Container (Mobile fix) */}
           <div className="relative z-10 h-full overflow-y-auto">
             <div className="min-h-full flex items-start md:items-center justify-center p-4">
@@ -840,10 +807,9 @@ export default function Page() {
                       className="px-2 py-1 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
                       onClick={() => setLang((l) => (l === "de" ? "en" : "de"))}
                     >
-                      {lang.toUpperCase()}
+                      {lang === "de" ? "EN" : "DE"}
                     </button>
-                    {/* 👉 KEIN „Link kopieren“-Button irgendwo! 👈 */}
-                    <button onClick={() => { setMatchOpen(false); syncUrl.clear(); }} className="text-white/70 hover:text-white inline-flex items-center gap-1">
+                    <button onClick={closeMatch} className="text-white/70 hover:text-white inline-flex items-center gap-1">
                       <XCircle className="size-5" /> {I18N[lang].pm.close}
                     </button>
                   </div>
@@ -860,7 +826,7 @@ export default function Page() {
                 </div>
 
                 {/* Content (scroll area) */}
-                <div className="px-5 pb-20 overflow-y-auto"> {/* padding-bottom for sticky footer */}
+                <div className="px-5 pb-20 overflow-y-auto">
                   {/* STEP 1 */}
                   {matchStep === 1 && !matchLoading && (
                     <form onSubmit={submitPlatformMatch} className="grid gap-4">
@@ -971,7 +937,7 @@ export default function Page() {
                         {I18N[lang].pm.notePaypal}
                       </div>
 
-                      {/* Bars for ranking overview */}
+                      {/* Ranking bars */}
                       <div className="mt-4 space-y-3">
                         {matchResult.map((p, idx) => {
                           const maxScore = matchResult[0]?.score || 1;
@@ -1051,12 +1017,12 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Sticky footer actions (always visible on mobile) */}
+                {/* Sticky footer actions (mobile-friendly) */}
                 <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-5 py-3">
                   <div className="flex items-center justify-end gap-2">
                     {matchStep === 1 && !matchLoading && (
                       <>
-                        <button onClick={()=>{ setMatchOpen(false); syncUrl.clear(); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                        <button onClick={closeMatch} className="px-4 py-2 rounded bg-white/10 border border-white/20">
                           {I18N[lang].pm.cancel}
                         </button>
                         <button onClick={submitPlatformMatch} className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
@@ -1073,10 +1039,10 @@ export default function Page() {
 
                     {matchStep === 2 && (
                       <>
-                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); const u=new URL(window.location.href); u.searchParams.set("step","1"); history.replaceState(null,"",u.toString()); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
                           {I18N[lang].pm.back}
                         </button>
-                        <button onClick={()=>{ setMatchOpen(false); syncUrl.clear(); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                        <button onClick={closeMatch} className="px-4 py-2 rounded bg-white/10 border border-white/20">
                           {I18N[lang].pm.close}
                         </button>
                       </>
