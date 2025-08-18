@@ -893,8 +893,7 @@ export default function Page() {
                         }}
                         className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded bg-white/10 border border-white/20 hover:bg-white/20"
                       >
-                        <Copy className="size-4" /> {I18N[lang].copyLink}
-                      </button>
+                       
                     )}
 
                     <button onClick={() => setMatchOpen(false)} className="text-white/70 hover:text-white inline-flex items-center gap-1">
