@@ -116,7 +116,7 @@ export default function Page() {
     return u;
   }
 
-  /* ====== Features & Profile (VOR Scoring – damit Scoring darauf zugreifen kann) ====== */
+  /* ====== Features & Profile ====== */
   const FEATURES = [
     { key:"anon",    label:"Anonymität möglich" },
     { key:"ppv",     label:"Stark für Abos & PPV" },
@@ -135,7 +135,7 @@ export default function Page() {
     ManyVids: { anon:false, ppv:true, live:false, fast:false, paypal:true,  privacy:true, de:false }
   };
 
-  /* ====== Faires Fit-Scoring 0–10 (statt „Score 7“) ====== */
+  /* ====== Faires Fit-Scoring 0–10 ====== */
   function computePlatformScores(f) {
     const PLATFORMS = ["MALOUM", "OnlyFans", "Fansly", "Fanvue", "ManyVids"];
     const KEYS = ["anon", "ppv", "live", "fast", "paypal", "privacy", "de"];
@@ -178,7 +178,6 @@ export default function Page() {
     const W_PREFS    = 0.4;
 
     const results = PLATFORMS.map((p) => {
-      // (A) Feature-Match (Ja=1, Teilweise=0.5, Nein=0)
       const featHits = KEYS.reduce((sum, k) => {
         const v = PROFILE[p]?.[k];
         if (v === true)  return sum + 1;
@@ -187,7 +186,6 @@ export default function Page() {
       }, 0);
       const featureNorm = featHits / KEYS.length;
 
-      // (B) Präferenzen-Match (Mittel der aktiven Präferenz-Fits)
       const prefVals = [
         FOCUS_FIT[p][f.focus || "soft"],
         GOAL_FIT[p][f.goal || "subs"],
@@ -727,12 +725,12 @@ export default function Page() {
             <div className="min-h-full flex items-start md:items-center justify-center p-4">
               <div className="mx-4 md:mx-0 rounded-2xl border border-white/10 bg-[#0f0f14] shadow-2xl overflow-hidden w-full md:w-[880px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 {/* Header */}
-                <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div className="px-5 py-3 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-white/60">Creator-Base</div>
                     <div className="text-lg font-semibold">Plattform Match</div>
                   </div>
-                  <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1">
+                  <button onClick={()=>setMatchOpen(false)} className="text-white/70 hover:text-white flex items-center gap-1 text-sm">
                     <XCircle className="size-5" /> Schließen
                   </button>
                 </div>
@@ -745,12 +743,11 @@ export default function Page() {
                   <div className="mt-2 text-xs text-white/60">{progressLabel}</div>
                 </div>
 
-                {/* Scrollbarer Inhalt mit Extra-Bottom-Padding (für Sticky-Footer) */}
-                <div className="px-5 pb-24">
+                {/* Scrollbarer Inhalt mit Extra-Bottom-Padding (Platz für Sticky-Footer) */}
+                <div className="px-5 pb-20">
                   {/* STEP 1 (Form) */}
                   {matchStep === 1 && !matchLoading && (
-                    <form onSubmit={submitPlatformMatch} className="grid gap-4">
-                      {/* KI-Intro */}
+                    <form id="platform-match-form" onSubmit={submitPlatformMatch} className="grid gap-4">
                       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
                         <div className="text-xs text-white/60">KI-gestützt</div>
                         <div className="text-lg font-semibold mt-1">Schreib uns kurz, was dir wichtig ist</div>
@@ -774,7 +771,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Content-Fokus</label>
                           <select value={pcForm.focus} onChange={e=>setPcForm(v=>({...v, focus:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="soft">Soft / Teasing</option>
                             <option value="erotik">Erotik</option>
                             <option value="explicit">Explizit</option>
@@ -783,7 +780,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Anonym bleiben?</label>
                           <select value={pcForm.anon?'yes':'no'} onChange={e=>setPcForm(v=>({...v, anon:e.target.value==='yes'}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="no">Nein</option>
                             <option value="yes">Ja</option>
                           </select>
@@ -791,7 +788,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Primäres Ziel</label>
                           <select value={pcForm.goal} onChange={e=>setPcForm(v=>({...v, goal:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="subs">Abos / Stammkundschaft</option>
                             <option value="ppv">PPV & DMs</option>
                             <option value="discover">Reichweite</option>
@@ -800,7 +797,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Ziel-Region</label>
                           <select value={pcForm.region} onChange={e=>setPcForm(v=>({...v, region:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="global">Global</option>
                             <option value="dach">DACH</option>
                             <option value="us">USA-lastig</option>
@@ -809,7 +806,7 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Live-Streams wichtig?</label>
                           <select value={pcForm.live?'yes':'no'} onChange={e=>setPcForm(v=>({...v, live:e.target.value==='yes'}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="no">Nicht wichtig</option>
                             <option value="yes">Wichtig</option>
                           </select>
@@ -817,15 +814,13 @@ export default function Page() {
                         <div>
                           <label className="text-sm text-white/80">Zahlungs-Präferenz</label>
                           <select value={pcForm.payout} onChange={e=>setPcForm(v=>({...v, payout:e.target.value}))}
-                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20">
+                            className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-sm">
                             <option value="paypal">PayPal bevorzugt</option>
                             <option value="fast">Schnelle Auszahlung</option>
                             <option value="highcut">Hoher %-Anteil</option>
                           </select>
                         </div>
                       </div>
-
-                      {/* Hinweis: Buttons unten im Sticky-Footer */}
                     </form>
                   )}
 
@@ -908,29 +903,31 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Sticky Footer (Buttons immer sichtbar, Safe-Area für iOS) */}
-                <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-5 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-                  <div className="flex items-center justify-between gap-2">
-                    <a href="#kontakt" className="px-4 py-2 rounded" style={{ background: ACCENT }}>
-                      Kostenloses Erstgespräch
-                    </a>
-                    <div className="flex items-center gap-2">
-                      {matchStep === 1 && !matchLoading && (
-                        <button type="button" onClick={submitPlatformMatch} className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
-                          Auswerten <ChevronRight className="size-4" />
+                {/* Sticky Footer – nur nötige Buttons, mobil-freundlich */}
+                {!matchLoading && (
+                  <div className="sticky bottom-0 bg-[#0f0f14]/95 backdrop-blur border-t border-white/10 px-4 py-2 pb-[max(10px,env(safe-area-inset-bottom))]">
+                    <div className="flex items-center justify-end gap-2">
+                      {matchStep === 1 && (
+                        <button
+                          type="submit"
+                          form="platform-match-form"
+                          className="w-full sm:w-auto px-4 py-2 rounded text-sm"
+                          style={{ background: ACCENT }}
+                        >
+                          Auswerten <ChevronRight className="inline-block size-4 ml-1" />
                         </button>
                       )}
                       {matchStep === 2 && (
-                        <button onClick={()=>{ setMatchStep(1); setMatchLoading(false); }} className="px-4 py-2 rounded bg-white/10 border border-white/20">
+                        <button
+                          onClick={()=>{ setMatchStep(1); setMatchLoading(false); }}
+                          className="w-full sm:w-auto px-4 py-2 rounded text-sm bg-white/10 border border-white/20"
+                        >
                           Zurück
                         </button>
                       )}
-                      <button onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">
-                        Schließen
-                      </button>
                     </div>
                   </div>
-                </div>
+                )}
 
               </div>
             </div>
