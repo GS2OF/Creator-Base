@@ -202,6 +202,7 @@ export default function Page() {
 
   function choose(val) {
     setAnswers((prev) => ({ ...prev, [currentQ.key]: val }));
+    setTimeout(next, 300);
   }
 
   function next() {
@@ -878,7 +879,7 @@ export default function Page() {
                       </div>
                       {leadError && <div className="text-sm text-rose-400">{leadError}</div>}
                       <div className="text-xs text-white/50">
-                        Mit „Weiter“ stimmst du zu, dass wir dich zu deinem Ergebnis kontaktieren dürfen.
+                        Mit „Ergebnis anzeigen“ stimmst du zu, dass wir dich zu deinem Ergebnis kontaktieren dürfen.
                       </div>
                     </form>
                   )}
@@ -981,14 +982,6 @@ export default function Page() {
                       >
                         Zurück
                       </button>
-                      <button
-                        onClick={next}
-                        disabled={answers[currentQ.key] == null}
-                        className="ml-auto px-4 py-2 rounded text-white disabled:opacity-40"
-                        style={{ background: ACCENT }}
-                      >
-                        {step < QUESTIONS.length ? "Weiter" : "Ergebnis anzeigen"}
-                      </button>
                     </div>
                   )}
 
@@ -1005,7 +998,7 @@ export default function Page() {
                         className="ml-auto px-4 py-2 rounded text-white w-1/2 md:w-auto"
                         style={{ background: ACCENT }}
                       >
-                        Weiter
+                        Ergebnis anzeigen
                       </button>
                     </div>
                   )}
