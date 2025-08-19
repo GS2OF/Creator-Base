@@ -30,7 +30,7 @@ const Stars = ({ rating = 5 }) => {
   const full = Math.max(0, Math.min(5, Math.round(rating)));
   const empty = 5 - full;
   return (
-    <div className="ml-auto flex items-center gap-0.5" aria-label={`${full} von 5 Sternen`}>
+    <div className="ml-auto flex items-center gap-0.5" aria-label={`${full} out of 5 stars`}>
       {Array.from({ length: full }).map((_, i) => (
         <span key={`full-${i}`} className="text-base leading-none text-[#FFD85A]">★</span>
       ))}
@@ -94,9 +94,9 @@ const OptionCard = ({ selected, title, subtitle, onClick }) => (
 export default function Page() {
   const reduce = useReducedMotion();
 
-  /* ====== Plattform Match – STATE ====== */
+  /* ====== Platform Match – STATE ====== */
   const [matchOpen, setMatchOpen] = useState(false);
-  // stages: "q" (fragen), "lead" (kontakt), "loading", "result"
+  // stages: "q" (questions), "lead" (contact), "loading", "result"
   const [stage, setStage] = useState("q");
   const [step, setStep] = useState(1); // 1..7
   const [answers, setAnswers] = useState({
@@ -135,7 +135,7 @@ export default function Page() {
     setAnswers({ focus: null, anon: null, goal: null, region: null, payout: null, time: null, dms: null });
     setLead({ first: "", last: "", email: "", phone: "" });
     setLeadError("");
-    // Deep-link setzen
+    // Set deep link
     if (typeof window !== "undefined") {
       if (window.location.hash !== "#plattformmatch") {
         history.replaceState(null, "", window.location.pathname + window.location.search + "#plattformmatch");
@@ -145,13 +145,13 @@ export default function Page() {
 
   function closeMatch() {
     setMatchOpen(false);
-    // Hash entfernen, aber Query & Path erhalten
+    // Remove hash but keep query & path
     if (typeof window !== "undefined" && window.location.hash) {
       history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   }
 
-  /* ====== Fragen (7 Steps, A/B) ====== */
+    /* ====== Questions (7 steps, A/B) ====== */
   const QUESTIONS = [
     {
       key: "focus",
@@ -175,7 +175,7 @@ export default function Page() {
       key: "region",
       title: "Where is your focus?",
       a: { value: "dach",   title: "DACH", subtitle: "German-speaking audience" },
-      b: { value: "global", title: "Broad, English-speaking", subtitle: "Breiter, englischsprachig" },
+        b: { value: "global", title: "International", subtitle: "Broader, English-speaking audience" },
     },
     {
       key: "payout",
@@ -208,7 +208,7 @@ export default function Page() {
   function next() {
     if (stage === "q") {
       if (step < QUESTIONS.length) setStep(step + 1);
-      else setStage("lead"); // nach Frage 7: Lead-Gate
+      else setStage("lead"); // after question 7: lead gate
     }
   }
   function back() {
@@ -219,10 +219,10 @@ export default function Page() {
 
   /* ====== Scoring (normalisiert 1..10) ====== */
   function computeScores(a) {
-    // Rohpunkte (Basis 1, damit niemand bei 0 startet)
+    // Raw points (base 1 so no one starts at 0)
     const s = { MALOUM: 1, OnlyFans: 1, Fansly: 1, Fanvue: 1, ManyVids: 1 };
 
-    // 1) Fokus
+    // 1) Focus
     if (a.focus === "soft") { s.MALOUM += 2; s.Fansly += 1; }
     if (a.focus === "explicit") { s.OnlyFans += 3; s.ManyVids += 2; s.MALOUM += 1; }
 
@@ -230,7 +230,7 @@ export default function Page() {
     if (a.anon === true) { s.MALOUM += 3; s.Fansly += 1; }
     if (a.anon === false) { s.OnlyFans += 1; }
 
-    // 3) Ziel
+    // 3) Goal
     if (a.goal === "subs") { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 1; }
     if (a.goal === "ppv")  { s.OnlyFans += 3; s.MALOUM += 2; s.Fansly += 2; s.ManyVids += 1; }
 
@@ -238,11 +238,11 @@ export default function Page() {
     if (a.region === "dach")   { s.MALOUM += 2; }
     if (a.region === "global") { s.MALOUM += 1; s.OnlyFans += 1; s.Fansly += 1; }
 
-    // 5) Auszahlung
+    // 5) Payout
     if (a.payout === "paypal") { s.MALOUM += 2; s.OnlyFans += 2; s.Fansly += 2; s.Fanvue += 1; s.ManyVids += 1; }
     if (a.payout === "fast")   { s.MALOUM += 1; s.OnlyFans += 1; s.Fanvue += 1; }
 
-    // 6) Zeit
+    // 6) Time
     if (a.time === "low") { s.MALOUM += 2; s.Fanvue += 1; }
     if (a.time === "mid") { s.OnlyFans += 1; s.Fansly += 2; }
 
@@ -250,7 +250,7 @@ export default function Page() {
     if (a.dms === "low")  { s.MALOUM += 2; }
     if (a.dms === "high") { s.OnlyFans += 1; s.Fansly += 2; }
 
-    // Normalisieren: Top ≈ 10, Rest relativ (min 1.0)
+    // Normalize: top ≈ 10, rest relative (min 1.0)
     const raw = Object.entries(s);
     const maxRaw = Math.max(...raw.map(([,v]) => v));
     const norm = raw
@@ -263,7 +263,7 @@ export default function Page() {
   const [result, setResult] = useState(null);
   function startEvaluation() {
     setStage("loading");
-    // Simulierter „KI denkt…“
+    // Simulated "AI thinking…"
     setTimeout(() => {
       const ranking = computeScores(answers);
       setResult(ranking);
@@ -280,13 +280,13 @@ export default function Page() {
       return;
     }
 
-    // optional: sofort auswerten starten (UX snappy), parallel senden
+    // optional: start evaluation immediately (snappy UX), send in parallel
     startEvaluation();
 
     try {
       const fd = new FormData();
       fd.append("access_key", "a4174bd0-9c62-4f19-aa22-5c22a03e8da2");
-      fd.append("subject", "Plattform Match Lead");
+      fd.append("subject", "Platform Match Lead");
       fd.append("from_name", "Creator-Base Website");
       fd.append("replyto", lead.email);
       fd.append("first_name", lead.first);
@@ -323,17 +323,17 @@ export default function Page() {
   };
 
   const IconCell = ({v}) => v === true
-    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Ja</span>
+    ? <span className="inline-flex items-center gap-1 text-emerald-400"><Check className="size-4" />Yes</span>
     : v === false
       ? <span className="inline-flex items-center gap-1 text-rose-400"><X className="size-4" />No</span>
-      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Teilweise</span>;
+      : <span className="inline-flex items-center gap-1 text-white/70"><Minus className="size-4" />Partially</span>;
 
   // Progress bar label & width
   const progressLabel = useMemo(() => {
-    if (stage === "loading") return "Unsere KI denkt…";
-    if (stage === "lead") return "Fast geschafft – Kontaktdaten";
-    if (stage === "result") return "Dein Ergebnis";
-    return `Schritt ${step}/${QUESTIONS.length}`;
+    if (stage === "loading") return "Our AI is thinking…";
+    if (stage === "lead") return "Almost done – contact details";
+    if (stage === "result") return "Your result";
+    return `Step ${step}/${QUESTIONS.length}`;
   }, [stage, step]);
 
   const progressPct = useMemo(() => {
@@ -347,15 +347,15 @@ export default function Page() {
   const TESTIMONIALS = [
     { name: "Hannah L.", role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1520975916090-3105956dac38?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Weekly to-dos, clear pricing, DM templates – finally structure." },
     { name: "Mia K.",    role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1519340241574-2cec6aef0c01?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Discreet & fair. In 8 weeks to predictable 4-digit revenue." },
-    { name: "Lea S.",    role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Abo-Bundles + PPV-Plan = weniger Stress, mehr Cashflow." },
-    { name: "Nora P.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Anonym bleiben & wachsen – die KI-Workflows sind Gold wert." },
-    { name: "Julia M.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Promo-Slots & Pricing-Tests haben meine Konversion verdoppelt." },
-    { name: "Alina R.",  role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Ehrlich, respektvoll, transparent. Genau so stelle ich mir’s vor." },
-    { name: "Emma T.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Endlich KPIs, die Sinn machen – und ein 90-Tage-Plan." },
-    { name: "Sofia W.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Persona, Content-Cadence, DM-Skripte – passt zu meinem Alltag." },
-    { name: "Lara B.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Weniger Posten, mehr Wirkung. Funnels statt Zufall." },
-    { name: "Zoe F.",    role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Check-ins halten mich accountable. Wachstum ist messbar." },
-    { name: "Paula D.",  role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Fair splits & echte Hilfe. Kein leeres Agentur-Blabla." },
+    { name: "Lea S.",    role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Subscription bundles + PPV plan = less stress, more cash flow." },
+    { name: "Nora P.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Stay anonymous & grow – the AI workflows are priceless." },
+    { name: "Julia M.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Promo slots & pricing tests doubled my conversion." },
+    { name: "Alina R.",  role: "Fansly",   rating: 4, img: "https://images.unsplash.com/photo-1549351512-c5e12b12bda4?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Honest, respectful, transparent. Exactly how I imagine it." },
+    { name: "Emma T.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544006659-f0b21884ce1d?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Finally KPIs that make sense – and a 90-day plan." },
+    { name: "Sofia W.",  role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Persona, content cadence, DM scripts – fits my daily routine." },
+    { name: "Lara B.",   role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Less posting, more impact. Funnels instead of randomness." },
+    { name: "Zoe F.",    role: "MALOUM",   rating: 4, img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Check-ins keep me accountable. Growth is measurable." },
+    { name: "Paula D.",  role: "MALOUM",   rating: 5, img: "https://images.unsplash.com/photo-1524502397800-2eeaad7c3fe5?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "Fair splits & real support. No empty agency blah-blah." },
     { name: "Kim A.",    role: "OnlyFans", rating: 4, img: "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=200&h=200&q=60&crop=faces&facepad=2", text: "PayPal focus for German fans was the game changer." },
   ];
 
@@ -391,8 +391,8 @@ export default function Page() {
             <a href="#vergleich" className="hover:text-white">Comparison</a>
           </nav>
           <div className="flex items-center gap-2">
-            {/* EN-Toggle (einfacher Link zur EN-Seite, falls vorhanden) */}
-            <a href="/en" className="hidden md:inline-flex rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/20 text-white/90">EN</a>
+            {/* DE toggle linking back to German page */}
+            <a href="/" className="hidden md:inline-flex rounded-lg px-3 py-2 bg-white/10 border border-white/15 hover:bg-white/20 text-white/90">DE</a>
             <button onClick={openMatch} className="md:hidden rounded-lg px-3 py-2 bg-white/10 border border-white/20">Match</button>
             <a href="#kontakt" className="hidden md:inline-flex rounded-lg px-4 py-2" style={{ background: ACCENT }}>
               Free initial consultation
@@ -439,23 +439,23 @@ export default function Page() {
                 Book a call <ArrowRight className="size-5" />
               </a>
 
-              {/* Plattform Match – dezent (kein Pink) */}
+              {/* Platform Match – subtle (no pink) */}
               <button
                 type="button"
                 onClick={openMatch}
                 className="relative px-5 py-3 rounded-xl inline-flex items-center bg-white/10 border border-white/20 hover:bg-white/20 text-white"
               >
-                Plattform Match
+                Platform Match
                 <span
                   className="absolute -top-2 -right-2 text-[10px] font-semibold px-2 py-0.5 rounded"
                   style={{ background: ACCENT + "26", color: ACCENT }}
                 >
-                  NEU
+                  NEW
                 </span>
               </button>
             </div>
 
-            {/* Trust-Punkte */}
+            {/* Trust points */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm text-white/70">
               {["1:1 Coaching", "0 € setup fees", "Fair splits", "Discreet support"].map((t, i) => (
                 <div key={i} className="flex items-center gap-2">
@@ -514,9 +514,9 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* VORTEILE */}
+      {/* BENEFITS */}
       <Section id="vorteile" className="py-6 md:py-12">
-        <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Warum wir besser sind</h2>
+        <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Why we're better</h2>
         <p className="text-white/75 max-w-2xl mb-6">
           Value specifically for adult creators – with support, tools and deals.
         </p>
@@ -526,25 +526,25 @@ export default function Page() {
               <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
               <div>
                 <p className="font-semibold">
-                  Exklusive Deals (OnlyFans, MALOUM)
+                  Exclusive deals (OnlyFans, MALOUM)
                   <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
-                    EXKLUSIV
+                    EXCLUSIVE
                   </span>
                 </p>
-                <p className="text-white/75 text-sm">Bessere Konditionen, Promo-Slots & Early-Access-Features.</p>
+                <p className="text-white/75 text-sm">Better conditions, promo slots & early access features.</p>
               </div>
             </li>
             <li className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
               <div>
-                <p className="font-semibold">Proaktive Betreuung</p>
+                <p className="font-semibold">Proactive support</p>
                 <p className="text-white/75 text-sm">1:1 guidance, clear to-dos & weekly check-ins.</p>
               </div>
             </li>
             <li className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
               <div>
-                <p className="font-semibold">Transparente Splits</p>
+                <p className="font-semibold">Transparent splits</p>
                 <p className="text-white/75 text-sm">Full insight into KPIs & actions – no fine print.</p>
               </div>
             </li>
@@ -553,14 +553,14 @@ export default function Page() {
             <li className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
               <div>
-                <p className="font-semibold">Skalierbare Tools</p>
+                <p className="font-semibold">Scalable tools</p>
                 <p className="text-white/75 text-sm">Content planning, funnels & A/B tests that boost revenue.</p>
               </div>
             </li>
             <li className="flex items-start gap-3">
               <CheckCircle2 className="mt-0.5 size-5" style={{ color: ACCENT }} />
               <div>
-                <p className="font-semibold">Starkes Netzwerk</p>
+                <p className="font-semibold">Strong network</p>
                 <p className="text-white/75 text-sm">Studios, UGC teams & platforms for better CPMs.</p>
               </div>
             </li>
@@ -568,10 +568,10 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* LEISTUNGEN */}
+      {/* SERVICES */}
       <Section id="leistungen" className="py-6 md:py-12">
         <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Services for adult creators</h2>
-        <p className="text-white/75 max-w-2xl mb-6">Fokus auf Plattform-Konversion, DM-Monetarisierung & Markenschutz.</p>
+        <p className="text-white/75 max-w-2xl mb-6">Focus on platform conversion, DM monetization & brand protection.</p>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
@@ -594,16 +594,16 @@ export default function Page() {
             <div className="size-10 rounded-xl grid place-items-center mb-2" style={{ background: ACCENT + "1a" }}>
               <ShieldCheck className="size-5" style={{ color: ACCENT }} />
             </div>
-            <h3 className="font-semibold mb-1">Boundaries & Consent</h3>
-            <p className="text-sm text-white/80">Klare Content-Grenzen, Einwilligungen & Prozesse – respektvoll, sicher.</p>
+            <h3 className="font-semibold mb-1">Boundaries & consent</h3>
+            <p className="text-sm text-white/80">Clear content boundaries, consents & processes – respectful, safe.</p>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
             <div className="size-10 rounded-xl grid place-items-center mb-2" style={{ background: ACCENT + "1a" }}>
               <ShieldCheck className="size-5" style={{ color: ACCENT }} />
             </div>
-            <h3 className="font-semibold mb-1">Content-Schutz (DMCA)</h3>
-            <p className="text-sm text-white/80">Wasserzeichen, Monitoring & Takedowns, damit nichts unkontrolliert kursiert.</p>
+            <h3 className="font-semibold mb-1">Content protection (DMCA)</h3>
+            <p className="text-sm text-white/80">Watermarking, monitoring & takedowns so nothing circulates uncontrolled.</p>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
@@ -619,9 +619,9 @@ export default function Page() {
               <EyeOff className="size-5" style={{ color: ACCENT }} />
             </div>
             <h3 className="font-semibold mb-1">
-              Hybrid Models (ohne Gesicht)
+              Hybrid models (no face)
               <span className="ml-2 text-[10px] font-semibold px-2 py-0.5 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
-                EXKLUSIV
+                EXCLUSIVE
               </span>
             </h3>
             <p className="text-sm text-white/80">
@@ -631,10 +631,10 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* PROZESS */}
+      {/* PROCESS */}
       <Section id="prozess" className="py-6 md:py-12">
         <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">How our collaboration works</h2>
-        <p className="text-white/75 max-w-2xl mb-6">Vom ersten Hallo bis zum 90-Tage-Plan.</p>
+        <p className="text-white/75 max-w-2xl mb-6">From the first hello to the 90-day plan.</p>
 
         <div className="relative">
           <motion.div
@@ -648,11 +648,11 @@ export default function Page() {
           />
           <ol className="relative pl-6 sm:pl-8 space-y-8">
             {[
-              { Icon: PhoneCall, title: "Kontaktaufnahme", text: "Schreib kurz, wer du bist & wo du stehst – Antwort in 24h." },
+              { Icon: PhoneCall, title: "Getting in touch", text: "Briefly tell us who you are and where you're at – reply within 24h." },
               { Icon: Users, title: "Initial call", text: "Get to know each other, goals, questions. Non-binding & free." },
               { Icon: ClipboardList, title: "Needs analysis", text: "Audit: platform, content, channels, pricing & processes." },
               { Icon: Target, title: "Wishes & goals", text: "Define goals + content boundaries clearly." },
-              { Icon: Rocket, title: "Aktionsplan", text: "90-Tage-Plan mit To-dos, Verantwortlichkeiten & KPIs." },
+              { Icon: Rocket, title: "Action plan", text: "90-day plan with to-dos, responsibilities & KPIs." },
               { Icon: Handshake, title: "Collaboration", text: "Transparent splits, weekly iteration, sustainable growth." },
             ].map((s, i) => (
               <motion.li
@@ -675,10 +675,10 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* REFERENZEN */}
+      {/* TESTIMONIALS */}
       <Section id="referenzen" className="py-6 md:py-12">
         <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Testimonials</h2>
-        <p className="text-white/75 max-w-2xl mb-6">Echte Stimmen aus unserer Creator-Base – diskret & auf den Punkt.</p>
+        <p className="text-white/75 max-w-2xl mb-6">Real voices from our Creator-Base – discreet and to the point.</p>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {TESTIMONIALS.map((t, i) => (
@@ -697,24 +697,24 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* VERGLEICH */}
+      {/* COMPARISON */}
       <Section id="vergleich" className="py-6 md:py-12">
-        <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Creator-Base vs. andere Agenturen</h2>
+        <h2 className="text-2xl md:text-4xl font-bold tracking-tight mb-2">Creator-Base vs. other agencies</h2>
         <div className="overflow-x-auto mt-4">
           <table className="w-full text-sm md:text-base border-separate border-spacing-y-2">
             <thead>
               <tr className="text-left text-white/70">
-                <th className="py-3 px-4">Kriterium</th>
+                <th className="py-3 px-4">Criteria</th>
                 <th className="py-3 px-4">Creator-Base</th>
-                <th className="py-3 px-4">Andere</th>
+                <th className="py-3 px-4">Others</th>
               </tr>
             </thead>
             <tbody>
               {[
-                { k: "Betreuung", a: "1:1 & proaktiv", b: "Reaktiv, seltene Calls" },
+                { k: "Support", a: "1:1 & proactive", b: "Reactive, infrequent calls" },
                 { k: "Transparency", a: "Clear splits + KPIs", b: "Unclear contracts" },
-                { k: "Wachstum", a: "Funnel, A/B-Tests, Plan", b: "Ad-hoc Posts" },
-                { k: "Netzwerk", a: "Studios/Plattformen", b: "Einzeln" },
+                { k: "Growth", a: "Funnels, A/B tests, plan", b: "Ad-hoc posts" },
+                { k: "Network", a: "Studios/platforms", b: "Individual" },
               ].map((row, i) => (
                 <tr key={i} className="align-top">
                   <td className="py-3 px-4 text-white/80">{row.k}</td>
@@ -732,7 +732,7 @@ export default function Page() {
         </div>
       </Section>
 
-      {/* KONTAKT */}
+      {/* CONTACT */}
       <Section id="kontakt" className="py-8 md:py-14">
         <div className="grid md:grid-cols-2 gap-8 items-start">
           <div>
@@ -751,30 +751,30 @@ export default function Page() {
             className="p-6 rounded-2xl border bg-white/5 border-white/10 backdrop-blur"
           >
             <input type="hidden" name="access_key" value="a4174bd0-9c62-4f19-aa22-5c22a03e8da2" />
-            <input type="hidden" name="subject" value="Neue Anfrage – Creator-Base" />
+            <input type="hidden" name="subject" value="New inquiry – Creator-Base" />
             <input type="hidden" name="from_name" value="Creator-Base Website" />
             <input type="hidden" name="replyto" value="email" />
-            <input type="hidden" name="redirect" value="https://www.creator-base.com/danke" />
+            <input type="hidden" name="redirect" value="https://www.creator-base.com/en/danke" />
             <input type="checkbox" name="botcheck" className="hidden" style={{ display: "none" }} />
 
             <div className="grid gap-4">
               <div>
-                <label className="text-sm text-white/80">Dein Name</label>
-                <input name="name" required placeholder="Vor- und Nachname"
+                <label className="text-sm text-white/80">Your name</label>
+                <input name="name" required placeholder="First and last name"
                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
               </div>
               <div>
-                <label className="text-sm text-white/80">E-Mail</label>
+                <label className="text-sm text-white/80">Email</label>
                 <input type="email" name="email" required placeholder="name@mail.com"
                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
               </div>
               <div>
-                <label className="text-sm text-white/80">Kurz zu dir</label>
-                <textarea name="message" rows={4} placeholder="Wo stehst du? Welche Ziele hast du?"
+                <label className="text-sm text-white/80">About you</label>
+                <textarea name="message" rows={4} placeholder="Where are you at? What goals do you have?"
                   className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white placeholder:text-white/50" />
               </div>
               <button type="submit" className="w-full px-4 py-3 rounded" style={{ background: ACCENT }}>
-                Anfrage senden
+                Send request
               </button>
             </div>
           </form>
@@ -794,7 +794,7 @@ export default function Page() {
                 <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
                   <div>
                     <div className="text-xs text-white/60">Creator-Base</div>
-                    <div className="text-lg font-semibold">Plattform Match</div>
+                    <div className="text-lg font-semibold">Platform Match</div>
                   </div>
                   <button onClick={closeMatch} className="text-white/70 hover:text-white flex items-center gap-1">
                     <XCircle className="size-5" /> Close
@@ -838,17 +838,17 @@ export default function Page() {
                       <div className="text-lg font-semibold">Almost there – how can we reach you?</div>
                       <div className="grid md:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-sm text-white/80">Vorname *</label>
+                          <label className="text-sm text-white/80">First name *</label>
                           <input
                             value={lead.first}
                             onChange={(e)=>setLead(v=>({...v, first:e.target.value}))}
                             required
                             className="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/20 text-white"
-                            placeholder="Dein Vorname"
+                            placeholder="Your first name"
                           />
                         </div>
                         <div>
-                          <label className="text-sm text-white/80">Nachname</label>
+                          <label className="text-sm text-white/80">Last name</label>
                           <input
                             value={lead.last}
                             onChange={(e)=>setLead(v=>({...v, last:e.target.value}))}
@@ -857,7 +857,7 @@ export default function Page() {
                           />
                         </div>
                         <div>
-                          <label className="text-sm text-white/80">E-Mail *</label>
+                          <label className="text-sm text-white/80">Email *</label>
                           <input
                             type="email"
                             value={lead.email}
@@ -868,7 +868,7 @@ export default function Page() {
                           />
                         </div>
                         <div>
-                          <label className="text-sm text-white/80">Telefon</label>
+                          <label className="text-sm text-white/80">Phone</label>
                           <input
                             value={lead.phone}
                             onChange={(e)=>setLead(v=>({...v, phone:e.target.value}))}
@@ -890,10 +890,10 @@ export default function Page() {
                       <div
                         className="h-10 w-10 rounded-full border-2 border-white/20 animate-spin"
                         style={{ borderTopColor: ACCENT }}
-                        aria-label="KI denkt…"
+                        aria-label="AI thinking…"
                       />
-                      <div className="text-white/80 font-medium">Unsere KI denkt…</div>
-                      <div className="text-white/60 text-sm">Analysiert deine Angaben und erstellt das Ranking.</div>
+                      <div className="text-white/80 font-medium">Our AI is thinking…</div>
+                      <div className="text-white/60 text-sm">Analyzing your input and generating the ranking.</div>
                     </div>
                   )}
 
@@ -901,7 +901,7 @@ export default function Page() {
                   {stage === "result" && result && (
                     <div className="pb-2">
                       <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm text-white/80">
-                        Hinweis: Viele deutsche Fans bevorzugen <b>PayPal</b> – wegen einfacher, diskreter Zahlung.
+                        Note: Many German fans prefer <b>PayPal</b> for simple, discreet payment.
                       </div>
 
                       {(() => {
@@ -919,7 +919,7 @@ export default function Page() {
                               </div>
                               {p.name === "MALOUM" && (
                                 <span className="text-[10px] font-semibold px-2 py-1 rounded" style={{ background: ACCENT + "26", color: ACCENT }}>
-                                  Unsere Empfehlung
+                                  Our recommendation
                                 </span>
                               )}
                             </div>
@@ -944,17 +944,17 @@ export default function Page() {
                       })()}
 
                       <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 p-4">
-                        <div className="text-lg font-semibold">Warum MALOUM gut passt</div>
-                        <div className="text-white/70 text-sm">Basierend auf deinen Antworten:</div>
+                        <div className="text-lg font-semibold">Why MALOUM is a good fit</div>
+                        <div className="text-white/70 text-sm">Based on your answers:</div>
                         <ul className="mt-3 space-y-2 text-white/90">
                           {(() => {
                             const r = [];
                             if (answers.anon) r.push("Stay anonymous – MALOUM supports hybrid models & pseudonyms very well.");
-                            if (answers.goal === "subs") r.push("Abo-Fokus – planbare Bundles & stabile Monetarisierung.");
-                            if (answers.goal === "ppv")  r.push("PPV/DM-Fokus – klare Upsell-Playbooks & saubere Prozesse.");
-                            if (answers.payout === "paypal" || answers.region === "dach") r.push("PayPal & DACH – beliebt bei DE-Fans, einfache Abwicklung.");
-                            if (answers.time === "low") r.push("Wenig Zeit – effiziente Formate & klare Cadence.");
-                            if (answers.dms === "low") r.push("Content-first – weniger Chataufwand, mehr Wert je Post.");
+                            if (answers.goal === "subs") r.push("Subscription focus – predictable bundles & stable monetization.");
+                            if (answers.goal === "ppv")  r.push("PPV/DM focus – clear upsell playbooks & clean processes.");
+                            if (answers.payout === "paypal" || answers.region === "dach") r.push("PayPal & DACH – popular with German fans, easy processing.");
+                            if (answers.time === "low") r.push("Little time – efficient formats & clear cadence.");
+                            if (answers.dms === "low") r.push("Content-first – less chat effort, more value per post.");
                             if (r.length === 0) r.push("Solid all-round fit for clean, predictable growth.");
                             return r.map((t, i) => <li key={i}>• {t}</li>);
                           })()}
@@ -973,7 +973,7 @@ export default function Page() {
                         onClick={closeMatch}
                         className="px-4 py-2 rounded bg-white/10 border border-white/20 w-1/2 md:w-auto"
                       >
-                        Abbrechen
+                        Cancel
                       </button>
                       <button
                         onClick={back}
@@ -998,14 +998,14 @@ export default function Page() {
                         className="ml-auto px-4 py-2 rounded text-white w-1/2 md:w-auto"
                         style={{ background: ACCENT }}
                       >
-                        Ergebnis anzeigen
+                        Show result
                       </button>
                     </div>
                   )}
 
                   {stage === "loading" && (
                     <div className="flex items-center justify-between">
-                      <div className="text-white/70 text-sm">Ergebnis wird vorbereitet…</div>
+                      <div className="text-white/70 text-sm">Preparing result…</div>
                       <button onClick={closeMatch} className="px-4 py-2 rounded bg-white/10 border border-white/20">Close</button>
                     </div>
                   )}
@@ -1040,9 +1040,9 @@ export default function Page() {
             <span>© {new Date().getFullYear()} Creator-Base</span>
           </div>
           <div className="flex items-center gap-5">
-            <a href="#">Impressum</a>
-            <a href="#">Datenschutz</a>
-            <a href="#">AGB</a>
+            <a href="#">Imprint</a>
+            <a href="#">Privacy</a>
+            <a href="#">Terms</a>
           </div>
         </div>
       </Section>
