@@ -203,6 +203,34 @@ const STR = {
   }
 };
 
+/* ======== Custom Weight Slider (optischer Balken + unsichtbarer Range) ======== */
+function WeightSlider({ label, value, onChange }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between text-sm text-white/80 mb-1">
+        <span>{label}</span>
+        <span className="tabular-nums">{value}</span>
+      </div>
+      <div className="relative h-2 rounded-full bg-white/10 overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0"
+          style={{ width: `${value}%`, background: ACCENT }}
+        />
+        {/* klick-/drag-fähig */}
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={value}
+          onChange={(e)=>onChange(Number(e.target.value))}
+          className="absolute inset-0 w-full h-2 opacity-0 cursor-pointer"
+          aria-label={label}
+        />
+      </div>
+    </div>
+  );
+}
+
 /* ======== PAGE ======== */
 export default function Page() {
   const reduce = useReducedMotion();
@@ -235,7 +263,6 @@ export default function Page() {
   // Hash-Handling: #plattformmatch
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // auto-open on initial hash
     if (window.location.hash === "#plattformmatch") {
       setMatchOpen(true);
       setMatchStep(0);
@@ -277,7 +304,6 @@ export default function Page() {
   async function submitLead(e) {
     e?.preventDefault?.();
     if (!firstOk || !emailOk) return;
-
     try {
       setLeadSubmitting(true);
       await fetch("https://api.web3forms.com/submit", {
@@ -331,7 +357,7 @@ export default function Page() {
   const FEATURES = [
     { key:"anon",    label:"Anonymität möglich" },
     { key:"ppv",     label:"Stark für Abos & PPV" },
-    { key:"live",    label:"Live-Streams" }, // bleibt in Tabelle für Vergleich, wird aber nicht als Frage genutzt
+    { key:"live",    label:"Live-Streams" }, // bleibt in Tabelle für Vergleich
     { key:"fast",    label:"Schnelle Auszahlung" },
     { key:"paypal",  label:"PayPal verfügbar" },
     { key:"privacy", label:"DSGVO/Privatsphäre" },
@@ -469,7 +495,6 @@ export default function Page() {
             <a href="#vergleich" className="hover:text-white">{T.nav.vergleich}</a>
           </nav>
           <div className="flex items-center gap-3">
-            {/* Language switch: shows EN on DE page, DE on EN page */}
             <button
               onClick={() => setLang((l)=> l === "de" ? "en" : "de")}
               className="rounded-lg px-3 py-2 bg-white/10 border border-white/15 text-xs hover:bg-white/20"
@@ -522,7 +547,6 @@ export default function Page() {
               <a href="#kontakt" className="gap-2 px-5 py-3 rounded-xl inline-flex items-center" style={{ background: ACCENT }}>
                 {T.hero.call} <ArrowRight className="size-5" />
               </a>
-              {/* Plattform Match – neutral (kein Pink) */}
               <button
                 type="button"
                 onClick={() => {
@@ -895,13 +919,13 @@ export default function Page() {
                     <div className="h-1 rounded" style={{ width: progressWidth, background:ACCENT }} />
                   </div>
                   <div className="mt-2 text-xs text-white/60">
-                    {matchLoading ? T.match.progressL : (matchStep === 1 ? T.match.progressQ : T.match.progressR)}
+                    {progressLabel}
                   </div>
                 </div>
 
                 {/* Content area (scroll) */}
                 <div className="flex-1 overflow-y-auto px-5 pb-5">
-                  {/* STEP 0 – Lead */}
+                  {/* STEP 0 – Lead (ohne eigene Buttons; Buttons unten sticky) */}
                   {matchStep === 0 && (
                     <form onSubmit={submitLead} className="grid gap-4">
                       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
@@ -946,22 +970,10 @@ export default function Page() {
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">{T.match.cancel}</button>
-                        <button
-                          type="submit"
-                          className="px-4 py-2 rounded inline-flex items-center gap-1 disabled:opacity-50"
-                          style={{ background: ACCENT }}
-                          disabled={!firstOk || !emailOk || leadSubmitting}
-                        >
-                          {T.match.leadNext} <ChevronRight className="size-4" />
-                        </button>
-                      </div>
                     </form>
                   )}
 
-                  {/* STEP 1 – Fragen (ohne Live) + Weights */}
+                  {/* STEP 1 – Fragen (ohne Live) + Weights (ohne eigene Buttons; Buttons unten sticky) */}
                   {matchStep === 1 && !matchLoading && (
                     <form onSubmit={submitPlatformMatch} className="grid gap-4">
                       {/* KI-Intro */}
@@ -1025,36 +1037,26 @@ export default function Page() {
                         </div>
                       </div>
 
-                      {/* Weights */}
+                      {/* Weights – mit optischem Balken */}
                       <div className="rounded-xl bg-white/5 border border-white/10 p-4">
-                        <div className="font-semibold mb-2">{T.match.weights}</div>
+                        <div className="font-semibold mb-3">{T.match.weights}</div>
                         <div className="grid gap-4">
-                          <div>
-                            <label className="text-sm text-white/80">{T.match.wAnon}: {weights.wAnon}</label>
-                            <input type="range" min={0} max={100} value={weights.wAnon}
-                                   onChange={e=>setWeights(v=>({...v, wAnon: Number(e.target.value)}))}
-                                   className="w-full" />
-                          </div>
-                          <div>
-                            <label className="text-sm text-white/80">{T.match.wSubs}: {weights.wSubs}</label>
-                            <input type="range" min={0} max={100} value={weights.wSubs}
-                                   onChange={e=>setWeights(v=>({...v, wSubs: Number(e.target.value)}))}
-                                   className="w-full" />
-                          </div>
-                          <div>
-                            <label className="text-sm text-white/80">{T.match.wDE}: {weights.wDE}</label>
-                            <input type="range" min={0} max={100} value={weights.wDE}
-                                   onChange={e=>setWeights(v=>({...v, wDE: Number(e.target.value)}))}
-                                   className="w-full" />
-                          </div>
+                          <WeightSlider
+                            label={T.match.wAnon}
+                            value={weights.wAnon}
+                            onChange={(val)=>setWeights(v=>({...v, wAnon: val}))}
+                          />
+                          <WeightSlider
+                            label={T.match.wSubs}
+                            value={weights.wSubs}
+                            onChange={(val)=>setWeights(v=>({...v, wSubs: val}))}
+                          />
+                          <WeightSlider
+                            label={T.match.wDE}
+                            value={weights.wDE}
+                            onChange={(val)=>setWeights(v=>({...v, wDE: val}))}
+                          />
                         </div>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2">
-                        <button type="button" onClick={()=>setMatchOpen(false)} className="px-4 py-2 rounded bg-white/10 border border-white/20">{T.match.cancel}</button>
-                        <button type="submit" className="px-4 py-2 rounded inline-flex items-center gap-1" style={{ background: ACCENT }}>
-                          {T.match.evaluate} <ChevronRight className="size-4" />
-                        </button>
                       </div>
                     </form>
                   )}
@@ -1138,7 +1140,7 @@ export default function Page() {
                   )}
                 </div>
 
-                {/* Sticky footer actions (nur dort, wo sinnvoll) */}
+                {/* Sticky footer actions – EINZIGER Ort für Buttons */}
                 <div className="px-5 py-3 border-t border-white/10 bg-[#0f0f14]/95 sticky bottom-0">
                   {matchStep === 0 && (
                     <div className="flex items-center justify-end gap-2">
